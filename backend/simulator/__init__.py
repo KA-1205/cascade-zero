@@ -292,13 +292,13 @@ def _percentile(values: list[int], fraction: float) -> int | None:
     return ordered[max(0, int(len(ordered) * fraction + 0.999999) - 1)]
 
 
-def simulate(seed: int, policy: str = "none", config: dict | None = None) -> dict:
+def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=None) -> dict:
     """Return immutable-by-convention result with trace, hash and unique-user metrics."""
     if seed < 0:
         raise ValueError("seed must be non-negative")
-    if policy == "coordinated":
+    if policy == "coordinated" and plan is None:
         raise NotImplementedError("joint-action coordination is implemented in phase 2, task CZ-008")
-    if policy not in ("none", "independent", "guardrails"):
+    if policy not in ("none", "independent", "guardrails", "coordinated"):
         raise ValueError(f"unknown policy: {policy}")
     cfg = load_config(config)
     # Seed strings, not tuples: random.Random does not accept tuple seeds.
@@ -311,8 +311,21 @@ def simulate(seed: int, policy: str = "none", config: dict | None = None) -> dic
     for tick in range(cfg["ticks"]):
         run.tick = tick
         state = observe(run, tick)
-        for proposal in _proposals(policy, state, cfg["actions"]):
-            _apply(run, proposal)
+        if policy == "coordinated":
+            proposals = _proposals("independent", state, cfg["actions"])
+            decision = plan(state, proposals)
+            selected = decision.selected_actions
+            if (not isinstance(selected, list) or len(selected) != len(set(selected))
+                    or not set(selected) <= {p["action"] for p in proposals}):
+                raise ValueError("plan selected actions outside the proposed set")
+            _emit(run, "decision", {"actions": selected, "predicted_risk": decision.predicted_risk,
+                                    "reasons": decision.reasons, "simulated": True})
+            for proposal in proposals:
+                if proposal["action"] in selected:
+                    _apply(run, proposal)
+        else:
+            for proposal in _proposals(policy, state, cfg["actions"]):
+                _apply(run, proposal)
         if tick in (fault["start"], fault["end"] + 1, fault["recovery_end"] + 1):
             _emit(run, "incident", {"phase": ("degraded" if tick == fault["start"] else
                                                 "partial" if tick == fault["end"] + 1 else "restored")})
