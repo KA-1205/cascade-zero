@@ -22,3 +22,8 @@ python3 -m venv .venv
 source .venv/bin/activate
 pip install -e .
 ```
+
+Run reference simulation:
+```bash
+python backend/reference_sim.py --seed 42
+```
