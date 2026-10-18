@@ -1,0 +1,421 @@
+"""Seeded F1 sandbox model.
+
+Policies receive only ``ObservableState`` from ``observe``: lagged, aggregate
+telemetry, public topology, inferred incident flags, and action history. The
+capacity schedule, per-request state, RNG and actual service rates remain
+private to the run. This is a discrete-tick approximation, not a production
+service or a measured benchmark. No action reaches an external system.
+"""
+
+from __future__ import annotations
+
+import copy
+import hashlib
+import json
+import random
+from collections import deque
+from collections.abc import Mapping
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from types import MappingProxyType
+from typing import Any
+
+
+DEFAULT_CONFIG: dict[str, Any] = {
+    "config_version": "f1-v1",
+    "ticks": 110,
+    "topology": {"gateway": 120, "orders": 80, "payments": 80, "database": 100},
+    "db_connection_limit": 55,
+    "db_duration": 1,
+    "fault": {"start": 10, "end": 35, "degraded_capacity": 34,
+              "degraded_duration": 3, "recovery_capacity": 72,
+              "recovery_end": 48, "recovery_duration": 2},
+    "traffic": {"arrival": 55, "noise": 5, "queue_limit": 180,
+                "timeout": 6, "transaction_ttl": 18, "max_attempts": 3,
+                "retry_delay": 1, "base_retry_probability": 0.45,
+                "increased_retry_probability": 0.95},
+    "actions": {"retry_error_trigger": 0.05, "scale_queue_trigger": 25,
+                "restart_error_trigger": 0.18, "replica_startup": 4,
+                "replica_capacity": 28, "replica_db_slots": 8,
+                "restart_downtime": 2, "restart_warmup": 3,
+                "restart_warmup_fraction": 0.45,
+                "restart_spike_ticks": 3, "restart_spike_fraction": 1.4,
+                "guardrail_cooldown": 12, "guardrail_max_replicas": 2,
+                "guardrail_max_retries": 1},
+    "healthy": {"error_rate": 0.05, "queue_depth": 12,
+                "latency": 5, "consecutive_ticks": 30},
+}
+
+
+def load_config(path: str | Path | dict | None = None) -> dict[str, Any]:
+    """Overlay a JSON object on a fresh versioned default config."""
+    config = copy.deepcopy(DEFAULT_CONFIG)
+    if path is not None:
+        override = path if isinstance(path, dict) else json.loads(Path(path).read_text(encoding="utf-8"))
+        def merge(target: dict, source: dict) -> None:
+            for key, value in source.items():
+                if key not in target:
+                    raise ValueError(f"unknown config key: {key}")
+                if isinstance(target[key], dict):
+                    if not isinstance(value, dict):
+                        raise ValueError(f"expected object for {key}")
+                    merge(target[key], value)
+                else:
+                    target[key] = value
+        if not isinstance(override, dict):
+            raise ValueError("config must be a JSON object")
+        merge(config, override)
+    if not config["config_version"] or config["ticks"] < 1:
+        raise ValueError("config_version and positive ticks required")
+    for section in ("topology", "traffic", "actions", "healthy"):
+        if any(isinstance(v, (int, float)) and v < 0 for v in config[section].values()):
+            raise ValueError(f"negative parameter in {section}")
+    t, f = config["traffic"], config["fault"]
+    if (t["max_attempts"] < 1 or t["timeout"] < 1 or t["transaction_ttl"] < 1
+            or t["queue_limit"] < 1 or config["db_connection_limit"] < 1
+            or config["db_duration"] < 1 or f["degraded_duration"] < 1
+            or f["recovery_duration"] < 1 or not 0 <= f["start"] <= f["end"] <= f["recovery_end"]):
+        raise ValueError("invalid fault, connection, timeout or queue parameters")
+    for key in ("base_retry_probability", "increased_retry_probability"):
+        if not 0 <= t[key] <= 1:
+            raise ValueError(f"{key} must be in [0, 1]")
+    return config
+
+
+@dataclass(frozen=True)
+class ObservableState:
+    tick: int
+    error_rate: float
+    latency: float
+    queue_depth: int
+    db_load: float
+    topology: Mapping[str, Any]
+    incident_flags: tuple[str, ...]
+    action_history: tuple[tuple[str, int], ...]
+
+
+@dataclass
+class _Transaction:
+    id: str
+    created: int
+    route: str
+    attempts: int = 0
+    status: str = "pending"
+
+
+@dataclass
+class _Attempt:
+    tx: _Transaction
+    number: int
+    started: int
+    stage: str = "gateway"
+
+
+@dataclass
+class _Run:
+    seed: int
+    policy: str
+    config: dict[str, Any]
+    rng: random.Random
+    retry_rng: random.Random
+    run_id: str
+    tick: int = 0
+    events: list[dict] = field(default_factory=list)
+    transactions: list[_Transaction] = field(default_factory=list)
+    queues: dict[str, deque] = field(default_factory=lambda: {
+        name: deque() for name in ("gateway", "orders", "payments", "database")})
+    active: list[tuple[int, _Attempt]] = field(default_factory=list)
+    retries: list[tuple[int, _Transaction]] = field(default_factory=list)
+    action_history: list[tuple[str, int]] = field(default_factory=list)
+    replicas: list[int] = field(default_factory=list)
+    restarts: list[int] = field(default_factory=list)
+    retry_increases: int = 0
+    dropped: int = 0
+    total_attempts: int = 0
+    latencies: list[int] = field(default_factory=list)
+    max_queue_depth: int = 0
+    peak_db_connections: int = 0
+    healthy_streak: int = 0
+    recovery_time: int = -1
+    telemetry: dict = field(default_factory=lambda: {
+        "error_rate": 0.0, "latency": 0.0, "queue_depth": 0,
+        "db_load": 0.0})
+
+
+def observe(run: _Run, tick: int) -> ObservableState:
+    """Single common policy interface; only previous completed tick's telemetry."""
+    if tick != run.tick:
+        raise ValueError("observe must use the current tick")
+    m = run.telemetry
+    return ObservableState(tick, m["error_rate"], m["latency"],
+                           m["queue_depth"], m["db_load"],
+                            MappingProxyType({"edges": (("gateway", "orders"),
+                                                        ("gateway", "payments"),
+                                                        ("orders", "database"),
+                                                        ("payments", "database")),
+                                              "services": ("gateway", "orders", "payments", "database")}),
+                           tuple(flag for flag, present in (
+                               ("elevated_errors", m["error_rate"] > 0.05),
+                               ("high_queue", m["queue_depth"] > 25),
+                               ("db_busy", m["db_load"] > 0.8)) if present),
+                           tuple(run.action_history))
+
+
+def _emit(run: _Run, kind: str, payload: dict) -> None:
+    tick = run.tick
+    run.events.append({"event_id": f"{run.run_id}:{len(run.events):06d}",
+                       "run_id": run.run_id, "tick": tick, "kind": kind,
+                       "simulated": True, "trace_id": run.run_id,
+                       "timestamp": (datetime(2026, 1, 1, tzinfo=timezone.utc)
+                                     + timedelta(seconds=tick)).isoformat(),
+                       "payload": {**payload, "measured": False}})
+
+
+def _proposals(policy: str, state: ObservableState, action_config: dict) -> list[dict]:
+    if policy == "none":
+        return []
+    a = action_config
+    triggers = (("increase_retries", state.error_rate >= a["retry_error_trigger"]),
+                ("add_replicas", state.queue_depth >= a["scale_queue_trigger"]),
+                ("restart_service", state.error_rate >= a["restart_error_trigger"]))
+    proposals = []
+    for name, triggered in triggers:
+        if not triggered:
+            continue
+        if policy == "guardrails":
+            last = next((tick for action, tick in reversed(state.action_history)
+                          if action == name), -10**9)
+            if state.tick - last < a["guardrail_cooldown"]:
+                continue
+            if name == "add_replicas" and sum(1 for action, _ in state.action_history
+                                               if action == name) >= a["guardrail_max_replicas"]:
+                continue
+            if name == "increase_retries" and sum(1 for action, _ in state.action_history
+                                                   if action == name) >= a["guardrail_max_retries"]:
+                continue
+        proposals.append({"agent_id": {"increase_retries": "retry-agent",
+                                        "add_replicas": "scale-agent",
+                                        "restart_service": "restart-agent"}[name],
+                          "action": name, "target": "orders" if name != "increase_retries" else "database",
+                          "expected_effect": {"increase_retries": "more attempts sharing DB slots",
+                                              "add_replicas": "more orders workers sharing DB slots after startup",
+                                              "restart_service": "orders downtime, warm-up and catch-up spike"}[name],
+                          "cost": "shared DB connections", "confidence": 0.5,
+                          "ttl": 1})
+    return proposals
+
+
+def _apply(run: _Run, proposal: dict) -> None:
+    name = proposal["action"]
+    if name == "increase_retries":
+        run.retry_increases += 1
+    elif name == "add_replicas":
+        run.replicas.append(run.tick + run.config["actions"]["replica_startup"])
+    else:
+        run.restarts.append(run.tick)
+    run.action_history.append((name, run.tick))
+    _emit(run, "execution", {**proposal, "sandbox_only": True})
+
+
+def _fail(run: _Run, tx: _Transaction) -> None:
+    if tx.status == "pending":
+        tx.status = "failed"
+        run.latencies.append(run.tick - tx.created + 1)
+
+
+def _enqueue(run: _Run, attempt: _Attempt, stage: str) -> None:
+    attempt.stage = stage
+    queue = run.queues[stage]
+    if len(queue) >= run.config["traffic"]["queue_limit"]:
+        run.dropped += 1
+        _retry_or_fail(run, attempt)
+    else:
+        queue.append(attempt)
+
+
+def _start(run: _Run, tx: _Transaction) -> None:
+    if tx.status != "pending":
+        return
+    tx.attempts += 1
+    run.total_attempts += 1
+    _enqueue(run, _Attempt(tx, tx.attempts, run.tick), "gateway")
+
+
+def _retry_or_fail(run: _Run, attempt: _Attempt) -> None:
+    tx = attempt.tx
+    if tx.status != "pending":
+        return
+    t = run.config["traffic"]
+    probability = (t["increased_retry_probability"] if run.retry_increases
+                   else t["base_retry_probability"])
+    if (tx.attempts < t["max_attempts"]
+            and run.tick + t["retry_delay"] - tx.created < t["transaction_ttl"]
+            and run.retry_rng.random() < probability):
+        run.retries.append((run.tick + t["retry_delay"], tx))
+    else:
+        _fail(run, tx)
+
+
+def _capacity(run: _Run) -> tuple[int, int]:
+    c = run.config
+    f = c["fault"]
+    if f["start"] <= run.tick <= f["end"]:
+        return f["degraded_capacity"], f["degraded_duration"]
+    if run.tick <= f["recovery_end"] and run.tick > f["end"]:
+        return f["recovery_capacity"], f["recovery_duration"]
+    return c["topology"]["database"], c["db_duration"]
+
+
+def _service_capacity(run: _Run, name: str) -> int:
+    base = run.config["topology"][name]
+    if name != "orders":
+        return base
+    a = run.config["actions"]
+    base += sum(a["replica_capacity"] for ready in run.replicas if ready <= run.tick)
+    if run.restarts:
+        elapsed = run.tick - run.restarts[-1]
+        if elapsed < a["restart_downtime"]:
+            return 0
+        if elapsed < a["restart_downtime"] + a["restart_warmup"]:
+            return int(base * a["restart_warmup_fraction"])
+        if elapsed < (a["restart_downtime"] + a["restart_warmup"]
+                      + a["restart_spike_ticks"]):
+            return int(base * a["restart_spike_fraction"])
+    return base
+
+
+def _percentile(values: list[int], fraction: float) -> int | None:
+    if not values:
+        return None
+    ordered = sorted(values)
+    return ordered[max(0, int(len(ordered) * fraction + 0.999999) - 1)]
+
+
+def simulate(seed: int, policy: str = "none", config: dict | None = None) -> dict:
+    """Return immutable-by-convention result with trace, hash and unique-user metrics."""
+    if seed < 0:
+        raise ValueError("seed must be non-negative")
+    if policy == "coordinated":
+        raise NotImplementedError("joint-action coordination is implemented in phase 2, task CZ-008")
+    if policy not in ("none", "independent", "guardrails"):
+        raise ValueError(f"unknown policy: {policy}")
+    cfg = load_config(config)
+    # Seed strings, not tuples: random.Random does not accept tuple seeds.
+    def stream(name: str) -> random.Random:
+        digest = hashlib.sha256(f"{seed}:{name}".encode()).digest()
+        return random.Random(int.from_bytes(digest))
+    run = _Run(seed, policy, cfg, stream("traffic"), stream("retry"),
+               hashlib.sha256(json.dumps([seed, policy, cfg], sort_keys=True).encode()).hexdigest()[:16])
+    fault = cfg["fault"]
+    for tick in range(cfg["ticks"]):
+        run.tick = tick
+        state = observe(run, tick)
+        for proposal in _proposals(policy, state, cfg["actions"]):
+            _apply(run, proposal)
+        if tick in (fault["start"], fault["end"] + 1, fault["recovery_end"] + 1):
+            _emit(run, "incident", {"phase": ("degraded" if tick == fault["start"] else
+                                                "partial" if tick == fault["end"] + 1 else "restored")})
+        completed = 0
+        failures_before = sum(tx.status == "failed" for tx in run.transactions)
+        tick_latencies: list[int] = []
+        still_active = []
+        for finish, attempt in run.active:
+            if finish <= tick:
+                if attempt.tx.status == "pending":
+                    attempt.tx.status = "succeeded"
+                    latency = tick - attempt.tx.created + 1
+                    run.latencies.append(latency)
+                    tick_latencies.append(latency)
+                    completed += 1
+            else:
+                still_active.append((finish, attempt))
+        run.active = still_active
+        t = cfg["traffic"]
+        for tx in run.transactions:
+            if tx.status == "pending" and tick - tx.created >= t["transaction_ttl"]:
+                _fail(run, tx)
+        for name, queue in run.queues.items():
+            kept = deque()
+            while queue:
+                attempt = queue.popleft()
+                if attempt.tx.status != "pending":
+                    continue
+                if tick - attempt.started >= t["timeout"]:
+                    _retry_or_fail(run, attempt)
+                else:
+                    kept.append(attempt)
+            run.queues[name] = kept
+        due, run.retries = ([item for item in run.retries if item[0] <= tick],
+                            [item for item in run.retries if item[0] > tick])
+        for _, tx in due:
+            _start(run, tx)
+        arrivals = max(0, t["arrival"] + run.rng.randint(-t["noise"], t["noise"]))
+        for _ in range(arrivals):
+            tx = _Transaction(f"tx-{len(run.transactions):08d}", tick,
+                              run.rng.choice(("orders", "payments")))
+            run.transactions.append(tx)
+            _start(run, tx)
+        for stage in ("gateway", "orders", "payments"):
+            queue = run.queues[stage]
+            for _ in range(min(len(queue), _service_capacity(run, stage))):
+                attempt = queue.popleft()
+                _enqueue(run, attempt, attempt.tx.route if stage == "gateway" else "database")
+        db_cap, duration = _capacity(run)
+        # Service workers compete for the same connection pool. Added replicas
+        # increase orders' share; they do NOT create DB connections.
+        available = max(0, cfg["db_connection_limit"] - len(run.active))
+        slots = min(available, db_cap)
+        queue = run.queues["database"]
+        ready_replicas = sum(ready <= tick for ready in run.replicas)
+        order_slots = cfg["db_connection_limit"] // 2 + ready_replicas * cfg["actions"]["replica_db_slots"]
+        order_slots = min(cfg["db_connection_limit"], order_slots)
+        orders_used = 0
+        deferred = deque()
+        while queue and slots:
+            attempt = queue.popleft()
+            if attempt.tx.route == "orders" and orders_used >= order_slots:
+                deferred.append(attempt)
+                continue
+            run.active.append((tick + duration, attempt))
+            slots -= 1
+            orders_used += attempt.tx.route == "orders"
+        deferred.extend(queue)
+        run.queues["database"] = deferred
+        connections = len(run.active)
+        run.peak_db_connections = max(run.peak_db_connections, connections)
+        depth = sum(len(queue) for queue in run.queues.values())
+        run.max_queue_depth = max(run.max_queue_depth, depth)
+        failed_tick = sum(tx.status == "failed" for tx in run.transactions) - failures_before
+        # Aggregate outcome telemetry; outstanding work is visible via queue/load.
+        error_rate = failed_tick / max(1, failed_tick + completed)
+        latency = _percentile(tick_latencies, 0.5) or 0
+        run.telemetry = {"error_rate": error_rate, "latency": latency,
+                         "queue_depth": depth,
+                         "db_load": connections / cfg["db_connection_limit"]}
+        h = cfg["healthy"]
+        healthy = (tick > fault["start"] and error_rate <= h["error_rate"]
+                   and depth <= h["queue_depth"] and latency <= h["latency"])
+        run.healthy_streak = run.healthy_streak + 1 if healthy else 0
+        if run.recovery_time == -1 and run.healthy_streak >= h["consecutive_ticks"]:
+            run.recovery_time = tick - h["consecutive_ticks"] + 1 - fault["start"]
+        _emit(run, "metric", {**run.telemetry, "arrivals": arrivals,
+                              "unique_completed": completed, "unique_failed": failed_tick,
+                              "attempts_total": run.total_attempts, "dropped": run.dropped})
+    run.tick = cfg["ticks"]
+    for tx in run.transactions:
+        _fail(run, tx)  # End-of-horizon pending users count as failures once.
+    succeeded = sum(tx.status == "succeeded" for tx in run.transactions)
+    offered = len(run.transactions)
+    metrics = {"unique_offered": offered, "unique_succeeded": succeeded,
+               "unique_failed": offered - succeeded, "total_attempts": run.total_attempts,
+               "dropped": run.dropped, "latency_p50": _percentile(run.latencies, 0.5),
+               "latency_p95": _percentile(run.latencies, 0.95),
+               "max_queue_depth": run.max_queue_depth,
+               "peak_db_connections": run.peak_db_connections,
+               "sustained_recovery_time": run.recovery_time,
+               "actions_executed": len(run.action_history)}
+    canonical = json.dumps(run.events, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    return {"seed": seed, "policy": policy, "config_version": cfg["config_version"],
+            "config": cfg, "trace_hash": hashlib.sha256(canonical.encode()).hexdigest(),
+            "metrics": metrics, "events": run.events, "simulated": True, "measured": False}
