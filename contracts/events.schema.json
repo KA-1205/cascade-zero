@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://cascade-zero.local/contracts/events.schema.json",
+  "title": "CascadeZeroEvent",
+  "type": "object",
+  "required": [
+    "event_id",
+    "run_id",
+    "tick",
+    "kind",
+    "simulated",
+    "payload"
+  ],
+  "properties": {
+    "event_id": {
+      "type": "string"
+    },
+    "run_id": {
+      "type": "string"
+    },
+    "tick": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "kind": {
+      "enum": [
+        "metric",
+        "incident",
+        "proposal",
+        "decision",
+        "execution",
+        "verification"
+      ]
+    },
+    "simulated": {
+      "type": "boolean"
+    },
+    "payload": {
+      "type": "object"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "trace_id": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": false
+}

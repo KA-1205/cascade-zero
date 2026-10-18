@@ -1,0 +1,117 @@
+{
+  "environment": "simulation",
+  "simulated": true,
+  "measured": false,
+  "run": {
+    "id": "demo-001",
+    "seed": 42,
+    "scenario": "db_slowdown",
+    "policy": "coordinated",
+    "state": "running"
+  },
+  "topology": {
+    "nodes": [
+      {
+        "id": "gateway",
+        "capacity": 120
+      },
+      {
+        "id": "orders",
+        "capacity": 80
+      },
+      {
+        "id": "payments",
+        "capacity": 80
+      },
+      {
+        "id": "database",
+        "capacity": 100
+      }
+    ],
+    "edges": [
+      {
+        "from": "gateway",
+        "to": "orders"
+      },
+      {
+        "from": "gateway",
+        "to": "payments"
+      },
+      {
+        "from": "orders",
+        "to": "database"
+      },
+      {
+        "from": "payments",
+        "to": "database"
+      }
+    ]
+  },
+  "incident": {
+    "id": "INC-DEMO-001",
+    "title": "Database connection saturation",
+    "severity": "high",
+    "status": "active"
+  },
+  "proposals": [
+    {
+      "agent": "retry-agent",
+      "action": "increase_retries",
+      "risk": "high"
+    },
+    {
+      "agent": "scaling-agent",
+      "action": "add_replicas",
+      "risk": "unknown"
+    },
+    {
+      "agent": "restart-agent",
+      "action": "restart_payment",
+      "risk": "medium"
+    }
+  ],
+  "plans": [
+    {
+      "id": "plan-a",
+      "actions": [
+        "increase_retries",
+        "add_replicas",
+        "restart_payment"
+      ],
+      "predicted_risk": 0.91,
+      "status": "rejected",
+      "reasons": [
+        "Predicted shared DB pressure exceeds capacity"
+      ]
+    },
+    {
+      "id": "plan-b",
+      "actions": [
+        "limit_retries",
+        "delay_scale"
+      ],
+      "predicted_risk": 0.24,
+      "status": "candidate",
+      "reasons": [
+        "Within modeled capacity bounds"
+      ]
+    }
+  ],
+  "metrics": [
+    {
+      "tick": 0,
+      "error_rate_pct": 5,
+      "db_pressure_pct": 50
+    },
+    {
+      "tick": 10,
+      "error_rate_pct": 35,
+      "db_pressure_pct": 90
+    },
+    {
+      "tick": 20,
+      "error_rate_pct": 25,
+      "db_pressure_pct": 75
+    }
+  ]
+}

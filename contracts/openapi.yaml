@@ -1,0 +1,93 @@
+openapi: 3.1.0
+info:
+  title: Cascade Zero API
+  version: 1.0.0
+  description: Contract-first sandbox incident evaluation API. All demo results are simulated unless explicitly marked otherwise.
+servers:
+  - url: http://localhost:8000
+paths:
+  /v1/health:
+    get:
+      operationId: getHealth
+      responses:
+        '200': {description: Health status, content: {application/json: {schema: {type: object, properties: {status: {type: string}}}}}}
+  /v1/topology:
+    get:
+      operationId: getTopology
+      responses:
+        '200': {description: Service topology, content: {application/json: {schema: {$ref: '#/components/schemas/Topology'}}}}
+  /v1/runs:
+    post:
+      operationId: createRun
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RunRequest'}}}}
+      responses:
+        '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/Run'}}}}
+  /v1/runs/{run_id}:
+    get:
+      operationId: getRun
+      parameters: [{name: run_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: Run, content: {application/json: {schema: {$ref: '#/components/schemas/Run'}}}}
+  /v1/runs/{run_id}/events:
+    get:
+      operationId: streamRunEvents
+      description: SSE stream; each message conforms to events.schema.json.
+      parameters: [{name: run_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: Server-sent events, content: {text/event-stream: {schema: {type: string}}}}
+  /v1/runs/{run_id}/plans:
+    get:
+      operationId: listPlans
+      parameters: [{name: run_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: Candidate plans, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Plan'}}}}}
+  /v1/plans/{plan_id}/approval:
+    post:
+      operationId: approvePlan
+      description: Sandbox only; requires authenticated operator and idempotency key.
+      parameters: [{name: plan_id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string}}]
+      requestBody: {required: true, content: {application/json: {schema: {type: object, required: [approved], properties: {approved: {type: boolean}, reason: {type: string}}}}}}
+      responses:
+        '202': {description: Accepted for sandbox execution}
+        '403': {description: Forbidden}
+        '409': {description: Invalid transition or replay}
+      security: [{bearerAuth: []}]
+components:
+  securitySchemes:
+    bearerAuth: {type: http, scheme: bearer}
+  schemas:
+    RunRequest:
+      type: object
+      required: [seed, scenario, policy]
+      properties:
+        seed: {type: integer, minimum: 0}
+        scenario: {type: string, enum: [db_slowdown]}
+        policy: {type: string, enum: [none, independent, guardrails, coordinated]}
+    Run:
+      type: object
+      required: [id, seed, scenario, policy, state, simulated]
+      properties:
+        id: {type: string}
+        seed: {type: integer}
+        scenario: {type: string}
+        policy: {type: string}
+        state: {type: string, enum: [created, running, completed, failed, cancelled]}
+        simulated: {type: boolean}
+        metrics: {type: object, additionalProperties: {type: number}}
+    Topology:
+      type: object
+      required: [nodes, edges]
+      properties:
+        nodes: {type: array, items: {type: object, required: [id, capacity], properties: {id: {type: string}, capacity: {type: number}}}}
+        edges: {type: array, items: {type: object, required: [from, to], properties: {from: {type: string}, to: {type: string}}}}
+    Plan:
+      type: object
+      required: [id, run_id, actions, predicted_risk, status, simulated]
+      properties:
+        id: {type: string}
+        run_id: {type: string}
+        actions: {type: array, items: {type: string}}
+        predicted_risk: {type: number, minimum: 0, maximum: 1}
+        status: {type: string, enum: [candidate, rejected, approved, delayed, executed]}
+        simulated: {type: boolean}
+        reasons: {type: array, items: {type: string}}
