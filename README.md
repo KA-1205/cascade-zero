@@ -23,7 +23,8 @@ source .venv/bin/activate
 pip install -e .
 ```
 
-Run reference simulation:
+### Running Experiments
+
 ```bash
-python backend/reference_sim.py --seed 42
+python3 experiments/holdout_f1_runner.py
 ```
