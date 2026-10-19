@@ -134,6 +134,19 @@ interface IncidentPageProps {
   id: string;
 }
 
+/**
+ * Live mode turns a bare transport 404 into an actionable message: the route
+ * param must be a real run id from POST /v1/runs — fixture ids like
+ * INC-DEMO-001 exist only in mock mode. Non-404 errors pass through as-is.
+ */
+function liveRunMissingHint(runId: string, raw: string): string {
+  if (!raw.includes('404')) return raw;
+  return `Run "${runId}" was not found on the backend (404). In live mode the ` +
+    'route param must be a real run id created via POST /v1/runs — fixture ' +
+    'ids like INC-DEMO-001 exist only in mock mode. Use the "Create demo run" ' +
+    'button on /incidents to start one.';
+}
+
 export function IncidentPage({ id }: IncidentPageProps) {
   const [incident, setIncident] = useState<Incident | null>(null);
   const [events, setEvents] = useState<CascadeEvent[]>([]);
@@ -191,7 +204,10 @@ export function IncidentPage({ id }: IncidentPageProps) {
         seenEventIds.current = new Set(seeded.map((evt) => evt.event_id));
         setError(null);
       } catch (err) {
-        if (!disposed) setError(err instanceof Error ? err.message : 'Failed to load incident');
+        if (!disposed) {
+          const raw = err instanceof Error ? err.message : 'Failed to load incident';
+          setError(isMockMode ? raw : liveRunMissingHint(id, raw));
+        }
       }
       // Plans load separately and non-fatally: a plans failure (e.g. run has
       // no plans yet) must not take down the whole incident view — the section
