@@ -10,14 +10,23 @@ import type {
 } from '@/types/api';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Live transport — connects to the real backend API at NEXT_PUBLIC_API_URL.
+// Live transport — connects to the real backend API.
+//
+// Default is SAME-ORIGIN (`BASE = ''`): browser requests hit the Next server,
+// whose rewrite proxy (next.config.ts) forwards `/v1/*` to the backend at
+// `CASCADE_API_ORIGIN` (default http://127.0.0.1:8000). The backend binds
+// loopback only and sends no CORS headers, so a direct cross-origin call from
+// the browser would be blocked — the proxy keeps every path inside the
+// contract without touching backend/**. Set NEXT_PUBLIC_API_URL to bypass the
+// proxy (requires a backend that allows that origin).
+//
 // Responses are typed via `@/types/api` only. There is NO runtime response
 // validation here (zod is a project dependency but is not imported in the
 // transport layer); a malformed backend response would surface as a type
 // mismatch at the consumer, not a thrown ZodError.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:8000';
+const BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
@@ -78,11 +87,24 @@ export const liveTransport = {
     return apiFetch<Plan[]>(`/v1/runs/${runId}/plans`);
   },
 
+  /**
+   * POST /v1/plans/{plan_id}/approval — fail-closed on the backend: requires
+   * `Authorization: Bearer $CASCADE_APPROVAL_TOKEN` and an `Idempotency-Key`
+   * (decision D-0039 closed the previously documented missing-header gap).
+   * The token is read from NEXT_PUBLIC_APPROVAL_TOKEN and must match the
+   * backend's CASCADE_APPROVAL_TOKEN. NOTE: NEXT_PUBLIC_ vars are baked into
+   * the client bundle — acceptable only because this backend is a
+   * loopback-only sandbox; a real deployment must keep the token server-side.
+   */
   async approvePlan(planId: string, approved: boolean, reason?: string): Promise<void> {
     const key = crypto.randomUUID();
+    const token = process.env.NEXT_PUBLIC_APPROVAL_TOKEN;
     await apiFetch<void>(`/v1/plans/${planId}/approval`, {
       method: 'POST',
-      headers: { 'Idempotency-Key': key },
+      headers: {
+        'Idempotency-Key': key,
+        ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      },
       body: JSON.stringify({ approved, reason }),
     });
   },

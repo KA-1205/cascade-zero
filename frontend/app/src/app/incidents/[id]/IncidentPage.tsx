@@ -17,6 +17,7 @@ import type {
   Incident,
   IncidentPayload,
   MetricPayload,
+  Plan,
   ProposalPayload,
   SseStatus,
   TickMetric,
@@ -145,6 +146,12 @@ export function IncidentPage({ id }: IncidentPageProps) {
   const [sseStatus, setSseStatus] = useState<SseStatus>('connecting');
   const [error, setError] = useState<string | null>(null);
   const [retryNonce, setRetryNonce] = useState(0);
+  // Real coordinator plans from GET /v1/runs/{run_id}/plans. In live mode these
+  // carry the server-minted plan ids the approval endpoint knows about — the
+  // SSE-derived proposals above are presentation records without plan ids.
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [plansError, setPlansError] = useState<string | null>(null);
+  const [approvingId, setApprovingId] = useState<string | null>(null);
   // Dedup guard: mock mode replays exactly the fetched timeline (same event
   // ids), and in live mode the server may re-emit events across a reconnect —
   // either way an already-known event id must not be appended twice.
@@ -186,6 +193,20 @@ export function IncidentPage({ id }: IncidentPageProps) {
       } catch (err) {
         if (!disposed) setError(err instanceof Error ? err.message : 'Failed to load incident');
       }
+      // Plans load separately and non-fatally: a plans failure (e.g. run has
+      // no plans yet) must not take down the whole incident view — the section
+      // renders its own inline error instead.
+      try {
+        const planData = await api.listPlans(id);
+        if (!disposed) {
+          setPlans(planData);
+          setPlansError(null);
+        }
+      } catch (err) {
+        if (!disposed) {
+          setPlansError(err instanceof Error ? err.message : 'Failed to load plans');
+        }
+      }
     }
 
     load();
@@ -197,6 +218,36 @@ export function IncidentPage({ id }: IncidentPageProps) {
       unsubscribe();
     };
   }, [id, retryNonce]);
+
+  // Approve the plan via the fail-closed backend endpoint (decision D-0039).
+  // The backend accepts only approved=true; a rejection is a 400 by contract,
+  // so the UI offers Approve only. On success the plan list is refetched so the
+  // card reflects the server's executed status rather than an optimistic guess.
+  async function handleApprove(planId: string) {
+    setApprovingId(planId);
+    setPlansError(null);
+    try {
+      await api.approvePlan(planId, true);
+      const refreshed = await api.listPlans(id);
+      setPlans(refreshed);
+    } catch (err) {
+      setPlansError(err instanceof Error ? err.message : 'Approval failed');
+    } finally {
+      setApprovingId(null);
+    }
+  }
+
+  // Plans-error retry: re-fetches plans (not the whole page) so the section
+  // recovers without tearing down the SSE subscription.
+  async function handleRetryPlans() {
+    try {
+      const planData = await api.listPlans(id);
+      setPlans(planData);
+      setPlansError(null);
+    } catch (err) {
+      setPlansError(err instanceof Error ? err.message : 'Failed to load plans');
+    }
+  }
 
   if (!incident && !error) {
     return (
@@ -222,6 +273,11 @@ export function IncidentPage({ id }: IncidentPageProps) {
         events={events}
         metricSeries={metricSeries}
         proposals={proposals}
+        plans={plans}
+        plansError={plansError}
+        approvingId={approvingId}
+        onApprove={handleApprove}
+        onRetryPlans={handleRetryPlans}
         sseStatus={sseStatus}
         error={error}
         onRetry={() => setRetryNonce((n) => n + 1)}
@@ -237,12 +293,20 @@ interface PageBodyProps {
   events: CascadeEvent[];
   metricSeries: TickMetric[];
   proposals: AgentProposal[];
+  plans: Plan[];
+  plansError: string | null;
+  approvingId: string | null;
+  onApprove: (planId: string) => void;
+  onRetryPlans: () => void;
   sseStatus: SseStatus;
   error: string | null;
   onRetry: () => void;
 }
 
-function PageBody({ incident, events, metricSeries, proposals, sseStatus, error, onRetry }: PageBodyProps) {
+function PageBody({
+  incident, events, metricSeries, proposals, plans, plansError, approvingId, onApprove,
+  onRetryPlans, sseStatus, error, onRetry,
+}: PageBodyProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'agents' | 'timeline'>('overview');
 
   const tabs = [
@@ -500,6 +564,62 @@ function PageBody({ incident, events, metricSeries, proposals, sseStatus, error,
               </div>
             )}
           </div>
+
+          {/* Real coordinator plans (GET /v1/runs/{run_id}/plans) with the
+              fail-closed approval action (D-0039). Only `candidate` plans can
+              be approved — the backend rejects everything else by contract. */}
+          <div className="surface" style={{ padding: 16 }}>
+            <SectionHeading
+              title="Recovery Plans"
+              subtitle="Coordinator plans eligible for approval · POST /v1/plans/{id}/approval (Bearer auth)"
+            />
+            {plansError && (
+              <ErrorState message={`Plan approval: ${plansError}`} onRetry={onRetryPlans} />
+            )}
+            {plans.length === 0 && !plansError ? (
+              <EmptyStateInline />
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
+                {plans.map((plan) => (
+                  <div
+                    key={plan.id}
+                    style={{
+                      padding: 16, backgroundColor: 'var(--bg-elevated)', borderRadius: 10,
+                      border: `1px solid ${plan.status === 'executed' ? 'var(--success)' : plan.status === 'rejected' ? 'var(--danger)' : 'var(--border)'}`,
+                    }}
+                  >
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{plan.id}</span>
+                      <StatusPill status={plan.status} />
+                    </div>
+                    <ul style={{ margin: '0 0 10px', paddingLeft: 18, display: 'flex', flexDirection: 'column', gap: 4 }}>
+                      {plan.actions.map((action) => (
+                        <li key={action} style={{ fontSize: 13, color: 'var(--text-secondary)' }}>{action}</li>
+                      ))}
+                    </ul>
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 12 }}>
+                      Predicted risk: <span style={{ color: 'var(--text-primary)', fontFamily: 'var(--font-mono)' }}>{plan.predicted_risk.toFixed(2)}</span>
+                    </p>
+                    {plan.status === 'candidate' && (
+                      <button
+                        type="button"
+                        onClick={() => onApprove(plan.id)}
+                        disabled={approvingId !== null}
+                        style={{
+                          width: '100%', padding: '8px 12px', borderRadius: 6, border: 'none',
+                          backgroundColor: approvingId === plan.id ? 'var(--bg-hover)' : 'var(--success)',
+                          color: approvingId === plan.id ? 'var(--text-muted)' : '#fff',
+                          fontSize: 13, fontWeight: 600, cursor: approvingId === plan.id ? 'wait' : 'pointer',
+                        }}
+                      >
+                        {approvingId === plan.id ? 'Approving…' : 'Approve Plan'}
+                      </button>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
         </div>
       )}
 
@@ -594,7 +714,10 @@ function buildSummary(event: CascadeEvent): string {
 function StatusPill({ status }: { status: string }) {
   const map: Record<string, [string, string]> = {
     approved: ['var(--success)', 'var(--success-muted)'],
+    executed: ['var(--success)', 'var(--success-muted)'],
     rejected: ['var(--danger)',  'var(--danger-muted)'],
+    candidate: ['var(--warning)', 'var(--warning-muted)'],
+    delayed:  ['var(--warning)', 'var(--warning-muted)'],
     pending:  ['var(--text-muted)', 'var(--bg-hover)'],
     expired:  ['var(--text-muted)', 'var(--bg-hover)'],
   };
