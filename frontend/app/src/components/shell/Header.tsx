@@ -19,9 +19,14 @@ export function Header({ onMenuToggle }: HeaderProps) {
         second: '2-digit',
         hour12: false,
       });
-    setCurrentTime(fmt());
+    // First update happens in a timer callback (not synchronously in the
+    // effect body) to avoid cascading renders; the interval keeps it ticking.
+    const initial = setTimeout(() => setCurrentTime(fmt()), 0);
     const interval = setInterval(() => setCurrentTime(fmt()), 1000);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initial);
+      clearInterval(interval);
+    };
   }, []);
 
   return (

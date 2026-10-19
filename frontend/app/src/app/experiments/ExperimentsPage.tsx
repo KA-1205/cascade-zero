@@ -209,6 +209,12 @@ function MetricMini({
 
 // ── Bar chart for comparison ────────────────────────────────────────────────────
 
+/** Recharts bar shape (module-scope so it isn't recreated during render). */
+const CustomBar = (props: { x?: number; y?: number; width?: number; height?: number; fill?: string }) => {
+  const { x = 0, y = 0, width = 0, height = 0, fill } = props;
+  return <rect x={x} y={y} width={width} height={height} fill={fill} rx={4} />;
+};
+
 function ComparisonBarChart({ arms }: { arms: ExperimentArm[] }) {
   const data = arms.map((arm) => ({
     name: POLICY_META[arm.policy].label.split(' ')[0],
@@ -216,11 +222,6 @@ function ComparisonBarChart({ arms }: { arms: ExperimentArm[] }) {
     ci: [arm.ci_lower ?? arm.unique_failed_txns, arm.ci_upper ?? arm.unique_failed_txns],
     fill: POLICY_META[arm.policy].color,
   }));
-
-  const CustomBar = (props: { x?: number; y?: number; width?: number; height?: number; fill?: string }) => {
-    const { x = 0, y = 0, width = 0, height = 0, fill } = props;
-    return <rect x={x} y={y} width={width} height={height} fill={fill} rx={4} />;
-  };
 
   return (
     <div className="chart-container" style={{ height: 280 }}>

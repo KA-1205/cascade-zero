@@ -1,13 +1,40 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts';
-import { SeverityBadge, SectionHeading, LoadingSkeleton, EmptyState, PredictedLabel } from '@/components/ui/primitives';
-import { mockIncident, mockMetricsByTick, mockProposals } from '@/lib/fixtures';
-import type { CascadeEvent, ProposalPayload } from '@/types/api';
+import { SeverityBadge, SectionHeading, LoadingSkeleton, ErrorState } from '@/components/ui/primitives';
+import { api, isMockMode } from '@/lib/api';
+// [SIM] display seeds, used in mock mode only. In live mode both series are
+// built from the streamed SSE events (see the subscription below), so the
+// page's runtime data flows exclusively through the unified `api` transport.
+import { mockMetricsByTick, mockProposals } from '@/lib/fixtures';
+import type {
+  AgentProposal,
+  CascadeEvent,
+  Incident,
+  IncidentPayload,
+  MetricPayload,
+  ProposalPayload,
+  SseStatus,
+  TickMetric,
+} from '@/types/api';
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Route param → runId alias (documented per decision D-0032)
+//
+// The contract has no /v1/incidents endpoint — the only incident-like data the
+// real API exposes is GET /v1/runs/{run_id}/events (SSE) plus the streamed
+// `incident` event itself. So `incidents/{id}` treats the route param as an
+// ALIAS FOR THE RUN ID: it is passed straight to `api.getIncident(id)` (live
+// transport: GET /v1/runs/{id}, mock transport: keyed fixtures) and to
+// `api.subscribeToEvents(id, …)` (live transport: GET /v1/runs/{id}/events,
+// mock transport: fixture replay). Header fields that only an incident event
+// can supply (severity, status, affected services) stay blank until the first
+// `incident` event arrives on the stream.
+// ─────────────────────────────────────────────────────────────────────────────
 
 const RISK_COLOR: Record<string, string> = {
   low: 'var(--success)',
@@ -31,12 +58,191 @@ function ChartTooltip({ active, payload, label }: { active?: boolean; payload?: 
   );
 }
 
+// ── SSE connection indicator ─────────────────────────────────────────────────
+
+const SSE_STATUS_META: Record<SseStatus, { label: string; color: string; bg: string; border: string; pulse: boolean }> = {
+  connecting:   { label: 'Stream connecting…',               color: 'var(--text-muted)',  bg: 'var(--bg-hover)',       border: 'var(--border)',  pulse: false },
+  connected:    { label: 'Connected',                         color: 'var(--success)',     bg: 'var(--success-muted)',  border: 'var(--success)', pulse: true },
+  reconnecting: { label: 'Reconnecting (3s intervals)…',      color: 'var(--warning)',     bg: 'var(--warning-muted)',  border: 'var(--warning)', pulse: true },
+  failed:       { label: 'Stream lost after 5 attempts',      color: 'var(--danger)',      bg: 'var(--danger-muted)',   border: 'var(--danger)',  pulse: false },
+  closed:       { label: 'Stream closed',                     color: 'var(--text-muted)',  bg: 'var(--bg-hover)',       border: 'var(--border)',  pulse: false },
+};
+
+function ConnectionStatus({ status }: { status: SseStatus }) {
+  const meta = SSE_STATUS_META[status];
+  return (
+    <span
+      title={`SSE connection status: ${status}`}
+      style={{
+        display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600,
+        color: meta.color, backgroundColor: meta.bg, border: `1px solid ${meta.border}`,
+        borderRadius: 6, padding: '2px 8px',
+      }}
+    >
+      {meta.pulse ? (
+        <span className="live-dot" style={{ width: 6, height: 6 }} />
+      ) : (
+        <span style={{ width: 6, height: 6, borderRadius: '50%', backgroundColor: meta.color, flexShrink: 0 }} />
+      )}
+      {meta.label}
+    </span>
+  );
+}
+
+// ── Event → view-model shapers ───────────────────────────────────────────────
+
+/** Unseen metric event → chart point. Dedup happens before this is called. */
+function metricPointFromEvent(event: CascadeEvent): TickMetric {
+  const p = event.payload as MetricPayload;
+  return {
+    tick: event.tick,
+    error_rate_pct: p.error_rate_pct,
+    db_pressure_pct: p.db_pressure_pct,
+    throughput_rps: p.throughput_rps,
+  };
+}
+
+/** Unseen proposal event → agent proposal card (presentation model). */
+function proposalFromEvent(event: CascadeEvent): AgentProposal {
+  const p = event.payload as ProposalPayload;
+  return { ...p, action_label: p.action, status: 'pending' };
+}
+
+/**
+ * Unseen `incident` event → header update. The record's identity (id) and
+ * started_at come from what the adapter already returned; content fields the
+ * route/adapter cannot know (severity, status, affected services) come from
+ * the stream.
+ */
+function incidentHeaderFromEvent(current: Incident | null, event: CascadeEvent): Incident {
+  const p = event.payload as IncidentPayload;
+  return {
+    id: current?.id ?? event.run_id,
+    run_id: event.run_id,
+    title: p.title,
+    severity: p.severity,
+    status: p.status,
+    started_at: current?.started_at ?? event.timestamp,
+    affected_services: p.affected_services,
+    hypotheses: current?.hypotheses,
+    timeline: current?.timeline,
+  };
+}
+
 interface IncidentPageProps {
   id: string;
 }
 
 export function IncidentPage({ id }: IncidentPageProps) {
-  const incident = mockIncident; // In live mode: fetched by id
+  const [incident, setIncident] = useState<Incident | null>(null);
+  const [events, setEvents] = useState<CascadeEvent[]>([]);
+  const [metricSeries, setMetricSeries] = useState<TickMetric[]>(() =>
+    isMockMode ? mockMetricsByTick : [],
+  );
+  const [proposals, setProposals] = useState<AgentProposal[]>(() =>
+    isMockMode ? mockProposals : [],
+  );
+  const [sseStatus, setSseStatus] = useState<SseStatus>('connecting');
+  const [error, setError] = useState<string | null>(null);
+  const [retryNonce, setRetryNonce] = useState(0);
+  // Dedup guard: mock mode replays exactly the fetched timeline (same event
+  // ids), and in live mode the server may re-emit events across a reconnect —
+  // either way an already-known event id must not be appended twice.
+  const seenEventIds = useRef<Set<string>>(new Set());
+
+  useEffect(() => {
+    let disposed = false;
+
+    const handleEvent = (event: CascadeEvent) => {
+      if (seenEventIds.current.has(event.event_id)) return;
+      seenEventIds.current.add(event.event_id);
+      setEvents((prev) => [...prev, event]);
+      if (event.kind === 'incident') {
+        setIncident((current) => incidentHeaderFromEvent(current, event));
+      } else if (event.kind === 'metric') {
+        setMetricSeries((prev) => [...prev, metricPointFromEvent(event)]);
+      } else if (event.kind === 'proposal') {
+        setProposals((prev) => [...prev, proposalFromEvent(event)]);
+      }
+    };
+
+    const handleError = (err: Error) => {
+      if (!disposed) setError(err.message);
+    };
+
+    const handleStatus = (status: SseStatus) => {
+      if (!disposed) setSseStatus(status);
+    };
+
+    async function load() {
+      try {
+        const data = await api.getIncident(id);
+        if (disposed) return;
+        setIncident(data);
+        const seeded = data.timeline ?? [];
+        setEvents(seeded);
+        seenEventIds.current = new Set(seeded.map((evt) => evt.event_id));
+        setError(null);
+      } catch (err) {
+        if (!disposed) setError(err instanceof Error ? err.message : 'Failed to load incident');
+      }
+    }
+
+    load();
+
+    const unsubscribe = api.subscribeToEvents(id, handleEvent, handleError, handleStatus);
+
+    return () => {
+      disposed = true;
+      unsubscribe();
+    };
+  }, [id, retryNonce]);
+
+  if (!incident && !error) {
+    return (
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 16, maxWidth: 1400 }}>
+        <LoadingSkeleton height={96} />
+        <LoadingSkeleton height={400} />
+      </div>
+    );
+  }
+
+  if (!incident) {
+    return (
+      <div style={{ maxWidth: 1400 }}>
+        <ErrorState message={error ?? undefined} onRetry={() => setRetryNonce((n) => n + 1)} />
+      </div>
+    );
+  }
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 1400 }}>
+      <PageBody
+        incident={incident}
+        events={events}
+        metricSeries={metricSeries}
+        proposals={proposals}
+        sseStatus={sseStatus}
+        error={error}
+        onRetry={() => setRetryNonce((n) => n + 1)}
+      />
+    </div>
+  );
+}
+
+// ── Page body (pure presentation once data/stream state exists) ──────────────
+
+interface PageBodyProps {
+  incident: Incident;
+  events: CascadeEvent[];
+  metricSeries: TickMetric[];
+  proposals: AgentProposal[];
+  sseStatus: SseStatus;
+  error: string | null;
+  onRetry: () => void;
+}
+
+function PageBody({ incident, events, metricSeries, proposals, sseStatus, error, onRetry }: PageBodyProps) {
   const [activeTab, setActiveTab] = useState<'overview' | 'agents' | 'timeline'>('overview');
 
   const tabs = [
@@ -46,7 +252,14 @@ export function IncidentPage({ id }: IncidentPageProps) {
   ] as const;
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 20, maxWidth: 1400 }}>
+    <>
+      {error && (
+        <ErrorState
+          message={`Event stream: ${error}`}
+          onRetry={sseStatus === 'failed' || sseStatus === 'closed' || sseStatus === 'reconnecting' ? onRetry : undefined}
+        />
+      )}
+
       {/* Breadcrumb */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12, color: 'var(--text-muted)' }}>
         <Link href="/overview" style={{ color: 'var(--text-muted)', textDecoration: 'none' }}>Overview</Link>
@@ -61,7 +274,20 @@ export function IncidentPage({ id }: IncidentPageProps) {
         <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 16, flexWrap: 'wrap' }}>
           <div style={{ flex: 1 }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
-              <SeverityBadge severity={incident.severity} />
+              {incident.severity ? (
+                <SeverityBadge severity={incident.severity} />
+              ) : (
+                <span
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600,
+                    color: 'var(--text-muted)', backgroundColor: 'var(--bg-hover)', border: '1px solid var(--border)',
+                    borderRadius: 6, padding: '2px 8px',
+                  }}
+                >
+                  Severity awaiting first incident event
+                </span>
+              )}
+              <ConnectionStatus status={sseStatus} />
               <span
                 style={{
                   display: 'flex', alignItems: 'center', gap: 5, fontSize: 11, fontWeight: 600,
@@ -77,16 +303,20 @@ export function IncidentPage({ id }: IncidentPageProps) {
               {incident.title}
             </h1>
             <div style={{ display: 'flex', gap: 16, flexWrap: 'wrap', fontSize: 13, color: 'var(--text-muted)' }}>
-              <span>Started: <span style={{ color: 'var(--text-secondary)' }}>{formatDateTime(incident.started_at)}</span></span>
+              {incident.started_at && (
+                <span>Started: <span style={{ color: 'var(--text-secondary)' }}>{formatDateTime(incident.started_at)}</span></span>
+              )}
               <span>Run: <span style={{ fontFamily: 'var(--font-mono)', color: 'var(--text-secondary)' }}>{incident.run_id}</span></span>
-              <span>
-                Affected:{' '}
-                {incident.affected_services.map((s) => (
-                  <span key={s} style={{ marginRight: 4, padding: '1px 6px', backgroundColor: 'var(--bg-elevated)', borderRadius: 4, color: 'var(--accent)', fontSize: 12 }}>
-                    {s}
-                  </span>
-                ))}
-              </span>
+              {incident.affected_services && (
+                <span>
+                  Affected:{' '}
+                  {incident.affected_services.map((s) => (
+                    <span key={s} style={{ marginRight: 4, padding: '1px 6px', backgroundColor: 'var(--bg-elevated)', borderRadius: 4, color: 'var(--accent)', fontSize: 12 }}>
+                      {s}
+                    </span>
+                  ))}
+                </span>
+              )}
             </div>
           </div>
           <Link
@@ -135,11 +365,11 @@ export function IncidentPage({ id }: IncidentPageProps) {
           {/* Telemetry charts */}
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
             <div className="surface" style={{ padding: 16 }}>
-              <SectionHeading title="Error Rate" subtitle="Simulation ticks" />
+              <SectionHeading title="Error Rate" subtitle={isMockMode ? 'Simulation ticks' : 'Live stream ticks'} />
               <div className="chart-container" style={{ height: 200 }}>
-                <span className="chart-simulated-label">[SIM]</span>
+                {isMockMode && <span className="chart-simulated-label">[SIM]</span>}
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={mockMetricsByTick} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <LineChart data={metricSeries} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis dataKey="tick" stroke="var(--text-muted)" fontSize={10} tickLine={false} />
                     <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} tickFormatter={(v) => `${v}%`} />
@@ -151,11 +381,11 @@ export function IncidentPage({ id }: IncidentPageProps) {
             </div>
 
             <div className="surface" style={{ padding: 16 }}>
-              <SectionHeading title="DB Pressure" subtitle="Connection pool utilisation" />
+              <SectionHeading title="DB Pressure" subtitle={isMockMode ? 'Connection pool utilisation' : 'Connection pool utilisation (live)'} />
               <div className="chart-container" style={{ height: 200 }}>
-                <span className="chart-simulated-label">[SIM]</span>
+                {isMockMode && <span className="chart-simulated-label">[SIM]</span>}
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={mockMetricsByTick} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
+                  <LineChart data={metricSeries} margin={{ top: 4, right: 8, left: 0, bottom: 0 }}>
                     <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
                     <XAxis dataKey="tick" stroke="var(--text-muted)" fontSize={10} tickLine={false} />
                     <YAxis stroke="var(--text-muted)" fontSize={10} tickLine={false} axisLine={false} domain={[0, 110]} tickFormatter={(v) => `${v}%`} />
@@ -221,50 +451,54 @@ export function IncidentPage({ id }: IncidentPageProps) {
           <div className="surface" style={{ padding: 16 }}>
             <SectionHeading
               title="Agent Proposals"
-              subtitle={`${mockProposals.length} proposals received · ${mockProposals.filter(p => p.status === 'approved').length} approved by coordinator`}
+              subtitle={`${proposals.length} proposals received · ${proposals.filter(p => p.status === 'approved').length} approved by coordinator`}
             />
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
-              {mockProposals.map((p) => (
-                <div
-                  key={p.proposal_id}
-                  style={{
-                    padding: 16, backgroundColor: 'var(--bg-elevated)', borderRadius: 10,
-                    border: `1px solid ${p.status === 'approved' ? 'var(--success)' : p.status === 'rejected' ? 'var(--danger)' : 'var(--border)'}`,
-                  }}
-                >
-                  {/* Agent + status */}
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
-                    <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{p.agent}</span>
-                    <StatusPill status={p.status ?? 'pending'} />
+            {proposals.length === 0 ? (
+              <EmptyStateInline />
+            ) : (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(340px, 1fr))', gap: 12 }}>
+                {proposals.map((p) => (
+                  <div
+                    key={p.proposal_id}
+                    style={{
+                      padding: 16, backgroundColor: 'var(--bg-elevated)', borderRadius: 10,
+                      border: `1px solid ${p.status === 'approved' ? 'var(--success)' : p.status === 'rejected' ? 'var(--danger)' : 'var(--border)'}`,
+                    }}
+                  >
+                    {/* Agent + status */}
+                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
+                      <span style={{ fontSize: 12, fontWeight: 600, color: 'var(--accent)', fontFamily: 'var(--font-mono)' }}>{p.agent}</span>
+                      <StatusPill status={p.status ?? 'pending'} />
+                    </div>
+                    {/* Action */}
+                    <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>{p.action_label}</p>
+                    {/* Target */}
+                    <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
+                      Target: <span style={{ color: 'var(--text-secondary)' }}>{p.target_service}</span>
+                    </p>
+                    {/* Effect */}
+                    <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>{p.expected_effect}</p>
+                    {/* Risk + confidence */}
+                    <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
+                      <div>
+                        <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Risk</p>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: RISK_COLOR[p.risk] }}>{p.risk.toUpperCase()}</span>
+                      </div>
+                      <div style={{ width: 1, height: 28, backgroundColor: 'var(--border)' }} />
+                      <div>
+                        <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Confidence</p>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-primary)' }}>{Math.round(p.confidence * 100)}%</span>
+                      </div>
+                      <div style={{ width: 1, height: 28, backgroundColor: 'var(--border)' }} />
+                      <div>
+                        <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>TTL</p>
+                        <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-secondary)' }}>{p.ttl_ticks} ticks</span>
+                      </div>
+                    </div>
                   </div>
-                  {/* Action */}
-                  <p style={{ fontSize: 14, fontWeight: 600, color: 'var(--text-primary)', marginBottom: 6 }}>{p.action_label}</p>
-                  {/* Target */}
-                  <p style={{ fontSize: 12, color: 'var(--text-muted)', marginBottom: 10 }}>
-                    Target: <span style={{ color: 'var(--text-secondary)' }}>{p.target_service}</span>
-                  </p>
-                  {/* Effect */}
-                  <p style={{ fontSize: 12, color: 'var(--text-secondary)', marginBottom: 12, lineHeight: 1.5 }}>{p.expected_effect}</p>
-                  {/* Risk + confidence */}
-                  <div style={{ display: 'flex', gap: 16, alignItems: 'center' }}>
-                    <div>
-                      <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Risk</p>
-                      <span style={{ fontSize: 12, fontWeight: 600, color: RISK_COLOR[p.risk] }}>{p.risk.toUpperCase()}</span>
-                    </div>
-                    <div style={{ width: 1, height: 28, backgroundColor: 'var(--border)' }} />
-                    <div>
-                      <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>Confidence</p>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-primary)' }}>{Math.round(p.confidence * 100)}%</span>
-                    </div>
-                    <div style={{ width: 1, height: 28, backgroundColor: 'var(--border)' }} />
-                    <div>
-                      <p style={{ fontSize: 10, color: 'var(--text-muted)', marginBottom: 3, textTransform: 'uppercase', letterSpacing: '0.05em' }}>TTL</p>
-                      <span style={{ fontFamily: 'var(--font-mono)', fontSize: 13, color: 'var(--text-secondary)' }}>{p.ttl_ticks} ticks</span>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       )}
@@ -272,13 +506,25 @@ export function IncidentPage({ id }: IncidentPageProps) {
       {activeTab === 'timeline' && (
         <div className="surface" style={{ padding: 16 }}>
           <SectionHeading title="Event Timeline" subtitle="Chronological event stream (tick-ordered)" />
-          <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-            {incident.timeline?.map((evt, i) => (
-              <TimelineEvent key={evt.event_id} event={evt} isLast={i === (incident.timeline?.length ?? 1) - 1} />
-            ))}
-          </div>
+          {events.length === 0 ? (
+            <EmptyStateInline />
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
+              {events.map((evt, i) => (
+                <TimelineEvent key={evt.event_id} event={evt} isLast={i === events.length - 1} />
+              ))}
+            </div>
+          )}
         </div>
       )}
+    </>
+  );
+}
+
+function EmptyStateInline() {
+  return (
+    <div style={{ padding: '24px 0', fontSize: 13, color: 'var(--text-muted)', textAlign: 'center' }}>
+      Nothing received on the stream yet.
     </div>
   );
 }

@@ -307,15 +307,15 @@ export function OverviewPage() {
                 </span>
                 <span style={{ color: 'var(--border)' }}>·</span>
                 <span style={{ fontSize: 12, color: 'var(--text-muted)' }}>
-                  Started {formatRelative(mockIncident.started_at)}
+                  Started {formatRelative(mockIncident.started_at!)}
                 </span>
                 <span style={{ color: 'var(--border)' }}>·</span>
                 <span style={{ fontSize: 12, color: 'var(--text-secondary)' }}>
-                  {mockIncident.affected_services.join(', ')}
+                  {mockIncident.affected_services!.join(', ')}
                 </span>
               </div>
             </div>
-            <SeverityBadge severity={mockIncident.severity} />
+            <SeverityBadge severity={mockIncident.severity!} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 4, color: 'var(--danger)', fontSize: 12 }}>
               <span className="live-dot" />
               <span>Active</span>
