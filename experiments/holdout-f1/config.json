@@ -1,0 +1,17 @@
+{
+  "protocol": "CZ-013 / D-0024 / screening-grade / frozen before held-out runs",
+  "simulator_config_version": "f1-v1",
+  "development_seeds_sanity_only": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
+  "arms": {"N0": "none", "N1": "independent", "N2": "guardrails", "N3": "coordinated"},
+  "coordinator_threshold": 0.5,
+  "negative_controls": {"N3_threshold_1": 1.0, "N3_threshold_0": 0.0},
+  "scenarios": [
+    {"id": "F1_primary", "label": "F1 database slowdown/retry storm", "seeds": {"start": 10000, "stop_exclusive": 10100}, "overlay": {}},
+    {"id": "F1_proxy_transient", "label": "F1-engine proxy: shorter, less severe slowdown (not F2)", "seeds": {"start": 10100, "stop_exclusive": 10130}, "overlay": {"fault": {"end": 18, "degraded_capacity": 45, "recovery_end": 28}}},
+    {"id": "F1_proxy_long", "label": "F1-engine proxy: prolonged deep slowdown (not F4)", "seeds": {"start": 10130, "stop_exclusive": 10160}, "overlay": {"fault": {"end": 52, "degraded_capacity": 22, "recovery_end": 68}}},
+    {"id": "F1_proxy_capacity", "label": "F1-engine proxy: reduced connection pool and higher traffic (not F6)", "seeds": {"start": 10160, "stop_exclusive": 10190}, "overlay": {"db_connection_limit": 42, "traffic": {"arrival": 63}}}
+  ],
+  "bootstrap": {"method": "matched-seed percentile, paired N3 minus comparator", "replicates": 2000, "seed": 24013, "confidence": 0.95},
+  "committed_events": {"seed_rule": "first seed of each scenario only", "ticks": [10], "kinds": ["decision", "execution", "metric", "incident"], "include_primary_controls": true},
+  "full_traces": "experiments/outputs/holdout-f1/ (gitignored)"
+}
