@@ -99,6 +99,21 @@ export interface ConstraintViolation {
 
 // ── SSE Events ───────────────────────────────────────────────────────────────
 
+/**
+ * Extended (frontend-only, not in the contract): connection lifecycle of the
+ * SSE event stream, reported by both transports via subscribeToEvents' optional
+ * onStatus callback. Used by the incident-detail page's connection indicator.
+ */
+export type SseStatus = 'connecting' | 'connected' | 'reconnecting' | 'failed' | 'closed';
+
+/** Shared SSE subscription signature; mock and live transports must match. */
+export type SseSubscribe = (
+  runId: string,
+  onEvent: (event: CascadeEvent) => void,
+  onError?: (err: Error) => void,
+  onStatus?: (status: SseStatus) => void,
+) => () => void;
+
 export interface CascadeEvent {
   event_id: string;
   run_id: string;
@@ -182,15 +197,24 @@ export interface GemmaHypothesis {
   is_verified: false;
 }
 
-/** G-01: Incident record — pending GET /v1/runs/{id}/incidents */
+/**
+ * G-01: Incident record — pending GET /v1/runs/{id}/incidents
+ *
+ * severity/status/started_at/affected_services are optional because the UI
+ * routes by `incidents/{id}` and there is no /v1/incidents endpoint in the
+ * contract: in live mode the route param is used as the run id and this record
+ * is derived from GET /v1/runs/{run_id}. Only the id/run_id/title are known
+ * then; the remaining header fields are filled in by the first streamed
+ * `incident` SSE event. Mock data always supplies every field.
+ */
 export interface Incident {
   id: string;
   run_id: string;
   title: string;
-  severity: IncidentSeverity;
-  status: IncidentStatus;
-  started_at: string;
-  affected_services: string[];
+  severity?: IncidentSeverity;
+  status?: IncidentStatus;
+  started_at?: string;
+  affected_services?: string[];
   hypotheses?: GemmaHypothesis[];
   timeline?: CascadeEvent[];
 }
