@@ -1,8 +1,10 @@
 """Structured, simulation-only incident hypotheses.
 
-The wire format for a transport is a Gemini generateContent response mapping.
-MockTransport is zero-RNG; its model_id is None. A failed live attempt yields
-an independently generated mock hypothesis with a non-None fallback_reason.
+The adapter tries an explicitly wired live client (anything with
+``GeminiClient.generate_json``'s shape) only when an API key is present; every
+failure falls back to the deterministic MockTransport with the shared
+client's machine-readable reason. MockTransport is zero-RNG; its model_id is
+None.
 """
 
 from __future__ import annotations
@@ -10,15 +12,14 @@ from __future__ import annotations
 import json
 import math
 import os
-import socket
 from dataclasses import dataclass, replace
-from typing import Any, Literal
-from urllib import error, parse, request
+from typing import Any, Protocol
 
 import jsonschema
 
+from backend.ai.client import AIUnavailable
 
-DEFAULT_MODEL = "google/gemma-4-31b-it"
+
 HYPOTHESIS_SCHEMA: dict[str, Any] = {
     "type": "object",
     "required": ["cause", "confidence", "rationale"],
@@ -36,9 +37,9 @@ class Hypothesis:
     cause: str
     confidence: float
     rationale: str
-    source: Literal["mock", "live"]
-    simulated: Literal[True]
-    measured: Literal[False]
+    source: str  # "mock" | "live"
+    simulated: bool
+    measured: bool
     fallback_reason: str | None
     model_id: str | None
 
@@ -47,21 +48,6 @@ def validate_hypothesis(payload: Any) -> dict[str, Any]:
     """Reject any model output outside the declared cause/confidence/rationale schema."""
     jsonschema.validate(payload, HYPOTHESIS_SCHEMA)
     return payload
-
-
-class MalformedBodyError(ValueError):
-    """The provider's envelope is absent, undecodable or structurally invalid."""
-
-
-def _extract(wire: Any) -> tuple[str, str]:
-    try:
-        model_id = wire["modelVersion"]
-        text = wire["candidates"][0]["content"]["parts"][0]["text"]
-        if not isinstance(model_id, str) or not model_id or not isinstance(text, str):
-            raise MalformedBodyError("missing model version or candidate text")
-        return model_id, text
-    except (KeyError, IndexError, TypeError) as exc:
-        raise MalformedBodyError("missing model version or candidate text") from exc
 
 
 class MockTransport:
@@ -91,82 +77,47 @@ class MockTransport:
         )
 
 
-class LiveGeminiTransport:
-    """Opt-in Gemini REST transport; no environment files and no key in the URL."""
+class HypothesisClient(Protocol):
+    """The live seam: any client with GeminiClient's generate_json shape."""
 
-    def __init__(self, api_key: str | None = None, model: str | None = None) -> None:
-        self.api_key = api_key if api_key is not None else os.environ.get("GEMINI_API_KEY")
-        self.model = model if model is not None else os.environ.get("GEMMA_MODEL", DEFAULT_MODEL)
+    def generate_json(self, prompt: str, schema: dict[str, Any]) -> tuple[dict, str]: ...
 
-    def generate(self, metrics: dict[str, Any], context: dict[str, Any] | None = None) -> Any:
-        if not self.api_key:
-            raise ValueError("GEMINI_API_KEY is required")
-        prompt = (
-            "Reason only about simulated incident data. Return ONLY one JSON object "
+
+def _prompt(metrics: dict[str, Any], context: dict[str, Any] | None) -> str:
+    return ("Reason only about simulated incident data. Return ONLY one JSON object "
             "conforming to this JSON schema: " + json.dumps(HYPOTHESIS_SCHEMA, sort_keys=True)
-            + "\nInput: " + json.dumps({"metrics": metrics, "context": context or {}}, sort_keys=True)
-        )
-        body = json.dumps({"contents": [{"parts": [{"text": prompt}]}],
-                           "generationConfig": {"responseMimeType": "application/json"}},
-                          sort_keys=True).encode("utf-8")
-        url = ("https://generativelanguage.googleapis.com/v1beta/models/"
-               + parse.quote(self.model, safe="/") + ":generateContent")
-        req = request.Request(url, data=body, method="POST", headers={
-            "Content-Type": "application/json", "x-goog-api-key": self.api_key,
-        })
-        with request.urlopen(req, timeout=30) as response:
-            if not 200 <= response.status < 300:
-                raise error.HTTPError(url, response.status, "non-2xx", {}, None)
-            raw = response.read()
-        try:
-            return json.loads(raw)
-        except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise MalformedBodyError("invalid provider envelope") from exc
+            + "\nInput: " + json.dumps({"metrics": metrics, "context": context or {}},
+                                       sort_keys=True))
 
 
 class HypothesisAdapter:
-    """Try an explicitly wired live transport only when an API key is present."""
+    """Try the wired live client only when an API key is present."""
 
-    def __init__(self, transport: LiveGeminiTransport | Any | None = None) -> None:
-        self.transport = transport if transport is not None else MockTransport()
+    def __init__(self, client: HypothesisClient | None = None) -> None:
+        self.client = client
         self.mock = MockTransport()
 
-    def hypothesize(self, metrics: dict, context: dict | None = None) -> Hypothesis:
+    def hypothesize(self, metrics: dict, context: dict[str, Any] | None = None) -> Hypothesis:
         if not isinstance(metrics, dict) or not isinstance(context, (dict, type(None))):
             raise ValueError("metrics must be a dict and context must be a dict or None")
         for name, _, _ in MockTransport._SIGNALS:
             value = metrics.get(name, 0)
             if isinstance(value, bool) or not isinstance(value, (int, float)) or not math.isfinite(value) or value < 0:
                 raise ValueError(f"{name} must be a finite nonnegative number")
-        if isinstance(self.transport, MockTransport) or not os.environ.get("GEMINI_API_KEY"):
+        if self.client is None or not os.environ.get("GEMINI_API_KEY"):
             return self.mock.hypothesize(metrics)
         try:
-            wire = self.transport.generate(metrics, context)
-            model_id, text = _extract(wire)
-            try:
-                payload = json.loads(text)
-            except (json.JSONDecodeError, UnicodeDecodeError):
-                reason = "unparseable_json"
-            else:
-                try:
-                    validate_hypothesis(payload)
-                except jsonschema.ValidationError:
-                    reason = "schema_validation_failure"
-                else:
-                    return Hypothesis(payload["cause"], payload["confidence"], payload["rationale"],
-                                      "live", True, False, None, model_id)
-        except (TimeoutError, socket.timeout):
-            reason = "timeout"
-        except error.HTTPError as exc:
-            reason = f"http_status:{exc.code}"
-        except MalformedBodyError:
-            reason = "malformed_body"
-        except error.URLError as exc:
-            reason = "timeout" if isinstance(exc.reason, (TimeoutError, socket.timeout)) else "transport_error"
-        except (OSError, ValueError, TypeError, KeyError, IndexError):
-            reason = "transport_error"
-        return replace(self.mock.hypothesize(metrics), fallback_reason=reason)
+            payload, model_id = self.client.generate_json(_prompt(metrics, context),
+                                                          HYPOTHESIS_SCHEMA)
+        except AIUnavailable:
+            # A key vanished between wiring and the call; stay honest and mock.
+            return self.mock.hypothesize(metrics)
+        except Exception as exc:  # noqa: BLE001 - the client's labeled reason is the taxonomy
+            reason = getattr(exc, "reason", None) or exc.__class__.__name__
+            return replace(self.mock.hypothesize(metrics), fallback_reason=reason)
+        return Hypothesis(payload["cause"], payload["confidence"], payload["rationale"],
+                          "live", True, False, None, model_id)
 
 
-__all__ = ["Hypothesis", "HypothesisAdapter", "MockTransport", "LiveGeminiTransport",
-           "HYPOTHESIS_SCHEMA", "DEFAULT_MODEL", "validate_hypothesis", "MalformedBodyError"]
+__all__ = ["Hypothesis", "HypothesisAdapter", "MockTransport", "HYPOTHESIS_SCHEMA",
+           "validate_hypothesis"]
