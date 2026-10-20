@@ -24,10 +24,11 @@ export function LiveIncidentsEntry() {
     setError(null);
     try {
       const run = await api.createRun({
-        seed: Math.floor(Math.random() * 1_000_000),
+        seed: 42,
         scenario: 'db_slowdown',
         policy: 'coordinated',
       });
+      localStorage.setItem('cascade-demo-run-id', run.id);
       router.push(`/incidents/${run.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create run');
@@ -43,12 +44,10 @@ export function LiveIncidentsEntry() {
           subtitle="The API contract has no list-incidents endpoint (decision D-0032) — open a run by id or create a demo run."
         />
         <p style={{ fontSize: 14, color: 'var(--text-secondary)', lineHeight: 1.7, marginBottom: 16 }}>
-          In live mode incident pages are keyed by <strong>run id</strong>. Mock
-          fixture ids like <code style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>INC-DEMO-001</code>{' '}
-          only exist in mock mode, and the backend would answer 404 for them.
-          Create a coordinated-policy run below, or open{' '}
+          Incident pages are keyed by <strong>run id</strong>. Create a coordinated-policy
+          sandbox run below with the reproducible seed 42, or open{' '}
           <code style={{ fontFamily: 'var(--font-mono)', fontSize: 12 }}>/incidents/{'{run_id}'}</code>{' '}
-          directly if you already have one.
+          directly if you already have one. Runs disappear when the backend restarts.
         </p>
         {error && <ErrorState message={`Create run: ${error}`} />}
         <button

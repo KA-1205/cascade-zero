@@ -4,7 +4,6 @@ import React, { useState, Suspense } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { SimBanner } from './SimBanner';
-import { isMockMode } from '@/lib/api';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -55,7 +54,7 @@ export function AppShell({ children }: AppShellProps) {
         <Header onMenuToggle={() => setSidebarOpen((v) => !v)} />
 
         {/* Sim banner */}
-        {isMockMode && <SimBanner />}
+        <SimBanner />
 
         {/* Page content */}
         <main

@@ -27,7 +27,6 @@ const NAV_ITEMS = [
         <circle cx="8" cy="11.5" r="0.75" fill="currentColor" />
       </svg>
     ),
-    badge: '1',
   },
   {
     href: '/plans',
@@ -168,26 +167,6 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
             >
               <span style={{ flexShrink: 0 }}>{item.icon}</span>
               {open && <span>{item.label}</span>}
-              {'badge' in item && item.badge && open && (
-                <span
-                  style={{
-                    marginLeft: 'auto',
-                    minWidth: 18,
-                    height: 18,
-                    borderRadius: 9,
-                    backgroundColor: 'var(--danger)',
-                    color: 'white',
-                    fontSize: 10,
-                    fontWeight: 700,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '0 4px',
-                  }}
-                >
-                  {item.badge}
-                </span>
-              )}
             </Link>
           );
         })}

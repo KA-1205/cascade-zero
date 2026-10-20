@@ -23,14 +23,11 @@ export function SimBanner() {
         <circle cx="7" cy="10.5" r="0.65" fill="currentColor" />
       </svg>
       <span style={{ fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 11 }}>
-        Simulated / Demo Data
+        Seeded Sandbox
       </span>
       <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>
       <span style={{ color: 'var(--text-secondary)' }}>
-        All metrics are from a seeded simulation. No production systems are connected.
-        <span style={{ marginLeft: 6, color: 'var(--text-muted)' }}>
-          Set <code style={{ fontFamily: 'var(--font-mono)', fontSize: 11, color: 'var(--warning)' }}>NEXT_PUBLIC_API_MODE=live</code> to connect to the backend.
-        </span>
+        Results come from the backend&apos;s deterministic infrastructure simulator. No production systems are connected.
       </span>
     </div>
   );

@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { ExperimentsPage } from './ExperimentsPage';
+import { BackendDemo } from '@/components/demo/BackendDemo';
 
 export const metadata: Metadata = { title: 'Experiment Lab' };
 
 export default function Page() {
-  return <ExperimentsPage />;
+  return <BackendDemo view="experiments" />;
 }

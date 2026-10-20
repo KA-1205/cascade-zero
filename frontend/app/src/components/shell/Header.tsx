@@ -1,8 +1,6 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { isMockMode } from '@/lib/api';
-import { mockRun } from '@/lib/fixtures';
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -10,6 +8,7 @@ interface HeaderProps {
 
 export function Header({ onMenuToggle }: HeaderProps) {
   const [currentTime, setCurrentTime] = useState<string>('');
+  const [runId, setRunId] = useState<string>('No run selected');
 
   useEffect(() => {
     const fmt = () =>
@@ -27,6 +26,14 @@ export function Header({ onMenuToggle }: HeaderProps) {
       clearTimeout(initial);
       clearInterval(interval);
     };
+  }, []);
+
+  useEffect(() => {
+    const update = () => setRunId(localStorage.getItem('cascade-demo-run-id') ?? 'No run selected');
+    update();
+    window.addEventListener('cascade-run-changed', update);
+    window.addEventListener('storage', update);
+    return () => { window.removeEventListener('cascade-run-changed', update); window.removeEventListener('storage', update); };
   }, []);
 
   return (
@@ -84,12 +91,10 @@ export function Header({ onMenuToggle }: HeaderProps) {
           <path d="M6 3.5V6L7.5 7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}>
-          {mockRun.id}
+          {runId}
         </span>
         <span style={{ color: 'var(--border)', margin: '0 2px' }}>·</span>
-        <span>seed={mockRun.seed}</span>
-        <span style={{ color: 'var(--border)', margin: '0 2px' }}>·</span>
-        <span style={{ color: 'var(--accent)', fontWeight: 500 }}>{mockRun.scenario}</span>
+        <span style={{ color: 'var(--accent)', fontWeight: 500 }}>backend run</span>
       </div>
 
       {/* Spacer */}
@@ -104,10 +109,10 @@ export function Header({ onMenuToggle }: HeaderProps) {
           fontSize: 12,
           color: 'var(--text-secondary)',
         }}
-        title="Event stream status"
+        title="Sandbox API mode"
       >
         <span className="live-dot" style={{ width: 7, height: 7 }} />
-        <span>Live</span>
+        <span>Sandbox API</span>
       </div>
 
       <div style={{ width: 1, height: 20, backgroundColor: 'var(--border)' }} />
@@ -117,16 +122,16 @@ export function Header({ onMenuToggle }: HeaderProps) {
         style={{
           padding: '3px 8px',
           borderRadius: 6,
-          backgroundColor: isMockMode ? 'var(--warning-muted)' : 'var(--success-muted)',
-          border: `1px solid ${isMockMode ? 'var(--warning)' : 'var(--success)'}`,
-          color: isMockMode ? 'var(--warning)' : 'var(--success)',
+          backgroundColor: 'var(--warning-muted)',
+          border: '1px solid var(--warning)',
+          color: 'var(--warning)',
           fontSize: 11,
           fontWeight: 600,
           letterSpacing: '0.05em',
           textTransform: 'uppercase',
         }}
       >
-        {isMockMode ? 'Simulator' : 'Live'}
+        Simulated infrastructure
       </div>
 
       {/* Clock */}

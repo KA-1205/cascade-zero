@@ -1,8 +1,8 @@
 import type { Metadata } from 'next';
-import { AuditPage } from './AuditPage';
+import { BackendDemo } from '@/components/demo/BackendDemo';
 
 export const metadata: Metadata = { title: 'Audit Trail' };
 
 export default function Page() {
-  return <AuditPage />;
+  return <BackendDemo view="audit" />;
 }

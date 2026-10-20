@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import { OverviewPage } from './OverviewPage';
+import { BackendDemo } from '@/components/demo/BackendDemo';
 
 export const metadata: Metadata = {
   title: 'Infrastructure Overview',
@@ -7,5 +7,5 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <OverviewPage />;
+  return <BackendDemo view="overview" />;
 }
