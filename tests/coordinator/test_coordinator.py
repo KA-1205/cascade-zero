@@ -77,7 +77,7 @@ def test_coordinated_reproducible_observable_only_and_common_traffic():
         assert isinstance(observation, ObservableState)
         assert set(vars(observation)) == {
             "tick", "error_rate", "latency", "queue_depth", "db_load", "topology",
-            "incident_flags", "action_history",
+            "incident_flags", "action_history", "service_queues",
         }
         observed.append((observation.tick, [p["action"] for p in offered]))
         return planner.plan(observation, offered)
@@ -101,17 +101,23 @@ def test_coordinated_reproducible_observable_only_and_common_traffic():
 
 
 @pytest.mark.parametrize("policy,expected", [
-    ("none", "3f599b7f47b7e4c65cd60555439f50a205ddabd2073636a598c8f86c9fccd766"),
-    ("independent", "45b8f29123223dbd2a0f599cf407cd6e879f4ae92fa7399a05bf5795a474c4d5"),
-    ("guardrails", "4790038e6ad6b73ea16e2a0e4aee956ee9792b927673aff01a86134a8a3ea7dc"),
+    # Hashes refreshed when fault.service_name joined the default config; the
+    # run-id digest hashes the whole config, so event ids and the trace hash
+    # move even though database-fault behaviour is unchanged.
+    # Hashes refreshed when metric events gained per-service queue depths.
+    ("none", "293c79ce84e2d5ba24df50f6f80c7f4fbf126b2c741c854aa20bd2f0a9abeef5"),
+    ("independent", "792336365665428c355e2553bc01bddcf00cb5ac08f4658a33671791495d762b"),
+    ("guardrails", "93a53e99bb92e9e46f3ee3d7db21314a88866403f7a34d67a17590677c8751a3"),
 ])
 def test_existing_seed_42_trace_hashes(policy, expected):
     assert simulate(42, policy)["trace_hash"] == expected
 
 
 def test_coordinated_requires_callback():
-    with pytest.raises(NotImplementedError, match="CZ-008"):
+    with pytest.raises(NotImplementedError, match="requires a plan callable"):
         simulate(42, "coordinated")
+    with pytest.raises(NotImplementedError, match="requires a plan callable"):
+        simulate(42, "ai_coordinated")
     with pytest.raises(ValueError, match="outside the proposed set"):
         simulate(42, "coordinated", {"ticks": 1}, plan=lambda *_: type("Plan", (), {
             "selected_actions": ["shell"], "predicted_risk": 0.0, "reasons": []})())

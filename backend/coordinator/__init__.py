@@ -9,16 +9,10 @@ import math
 from dataclasses import dataclass
 from itertools import combinations
 
+from backend.actions import AGENT_ACTIONS
 from backend.agents import default_agents
 from backend.risk import evaluate
 from backend.simulator import ObservableState
-
-
-_AGENT_ACTIONS = {
-    "retry-agent": "increase_retries",
-    "scale-agent": "add_replicas",
-    "restart-agent": "restart_service",
-}
 
 
 @dataclass(frozen=True)
@@ -36,8 +30,8 @@ class Coordinator:
             raise ValueError("threshold must be finite and between 0 and 1")
         self.threshold = threshold
         self.allowed_actions = frozenset(allowed_actions if allowed_actions is not None
-                                         else _AGENT_ACTIONS.values())
-        if not self.allowed_actions <= set(_AGENT_ACTIONS.values()):
+                                         else AGENT_ACTIONS.values())
+        if not self.allowed_actions <= set(AGENT_ACTIONS.values()):
             raise ValueError("unknown allowed action")
 
     def plan(self, state: ObservableState, proposals: list[dict]) -> PlanResult:
@@ -45,7 +39,7 @@ class Coordinator:
         if len(proposals) > 3:
             raise ValueError("at most three proposals are supported")
         if any(not isinstance(p, dict) or p.get("action") not in self.allowed_actions
-               or _AGENT_ACTIONS.get(p.get("agent_id")) != p.get("action") for p in proposals):
+               or AGENT_ACTIONS.get(p.get("agent_id")) != p.get("action") for p in proposals):
             raise ValueError("proposal must be from an allowlisted agent and action")
         by_name = {p["action"]: p for p in proposals}
         if len(by_name) != len(proposals):
@@ -64,14 +58,14 @@ class Coordinator:
             reasons.append("No actions proposed; empty plan has no action risk.")
         for name in names:
             if name in chosen:
-                term = next(reason for reason in assessment.reasons if reason.startswith(name + ":"))
+                term = next(t.reason for t in assessment.terms if t.actions == (name,))
                 reasons.append(f"Selected {name}: {term} plan risk {assessment.predicted_risk:.2f} <= threshold {self.threshold:.2f}.")
             else:
                 augmented = tuple(sorted((*chosen, name)))
                 candidate = assessments[augmented]
-                terms = [reason for reason in candidate.reasons
-                         if reason.startswith(name + ":") or
-                         (" x " in reason and name in reason.split(":", 1)[0].split(" x "))]
+                # Structured terms replace prose parsing: every term that
+                # involves the excluded action, in scoring order.
+                terms = [t.reason for t in candidate.terms if name in t.actions]
                 if candidate.predicted_risk > self.threshold:
                     reasons.append(f"Excluded {name}: adding it gives risk {candidate.predicted_risk:.2f} > threshold {self.threshold:.2f}; " + " ".join(terms))
                 else:
@@ -81,7 +75,7 @@ class Coordinator:
 
 def default_coordinator(threshold: float = 0.5) -> Coordinator:
     """Use the default agents' allowlisted recovery action set."""
-    return Coordinator(threshold, tuple(_AGENT_ACTIONS[agent.agent_id] for agent in default_agents()))
+    return Coordinator(threshold, tuple(AGENT_ACTIONS[agent.agent_id] for agent in default_agents()))
 
 
 __all__ = ["Coordinator", "PlanResult", "default_coordinator"]

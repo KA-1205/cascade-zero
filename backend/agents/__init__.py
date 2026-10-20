@@ -9,14 +9,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
+from backend.actions import AGENT_ACTIONS
 from backend.simulator import DEFAULT_CONFIG, ObservableState, load_config
-
-
-_ACTIONS = {
-    "retry-agent": "increase_retries",
-    "scale-agent": "add_replicas",
-    "restart-agent": "restart_service",
-}
 
 
 @dataclass(frozen=True)
@@ -32,7 +26,7 @@ class RecoveryAction:
         """Translate the documented action shape to the simulator's payload."""
         return {
             "agent_id": self.agent,
-            "action": _ACTIONS[self.agent],
+            "action": AGENT_ACTIONS[self.agent],
             "target": self.target,
             "expected_effect": self.effect,
             "cost": self.cost,
@@ -75,13 +69,17 @@ class RestartAgent:
     restart_error_trigger: float = field(
         default_factory=lambda: DEFAULT_CONFIG["actions"]["restart_error_trigger"]
     )
+    restart_target: str = field(
+        default_factory=lambda: DEFAULT_CONFIG["actions"]["restart_target"]
+    )
     agent_id: str = "restart-agent"
 
     def decide(self, state: ObservableState) -> RecoveryAction | None:
         if state.error_rate < self.restart_error_trigger:
             return None
-        return RecoveryAction(self.agent_id, "orders",
-                              "orders downtime, warm-up and catch-up spike",
+        return RecoveryAction(self.agent_id,
+                              self.restart_target,
+                              f"{self.restart_target} downtime, warm-up and catch-up spike",
                               "shared DB connections", 0.5, 1)
 
 
@@ -90,7 +88,8 @@ def default_agents(config: dict[str, Any] | None = None) -> tuple[RetryAgent, Sc
     actions = load_config(config)["actions"]
     return (RetryAgent(retry_error_trigger=actions["retry_error_trigger"]),
             ScaleAgent(scale_queue_trigger=actions["scale_queue_trigger"]),
-            RestartAgent(restart_error_trigger=actions["restart_error_trigger"]))
+            RestartAgent(restart_error_trigger=actions["restart_error_trigger"],
+                         restart_target=actions["restart_target"]))
 
 
 __all__ = ["RecoveryAction", "RetryAgent", "ScaleAgent", "RestartAgent", "default_agents"]

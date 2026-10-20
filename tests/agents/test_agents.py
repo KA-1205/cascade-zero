@@ -22,6 +22,10 @@ def state(*, tick: int = 0, error_rate: float = 0.0, queue_depth: int = 0) -> Ob
     "retry_error_trigger": 0.12,
     "scale_queue_trigger": 40,
     "restart_error_trigger": 0.31,
+}}, {"actions": {
+    # payments_degradation-style overlay: the restart target moves with the
+    # run config, so the agent must read it from there, not from defaults.
+    "restart_target": "payments", "restart_error_trigger": 0.05,
 }}])
 def test_independent_proposal_parity(config):
     cfg = load_config(config)
@@ -30,13 +34,15 @@ def test_independent_proposal_parity(config):
     retry, scale, restart = (a["retry_error_trigger"], a["scale_queue_trigger"],
                              a["restart_error_trigger"])
     assert (agents[0].retry_error_trigger, agents[1].scale_queue_trigger,
-            agents[2].restart_error_trigger) == (retry, scale, restart)
+            agents[2].restart_error_trigger, agents[2].restart_target) == (
+                retry, scale, restart, a["restart_target"])
     if config is None:
         assert (RetryAgent().retry_error_trigger, ScaleAgent().scale_queue_trigger,
-                RestartAgent().restart_error_trigger) == (
+                RestartAgent().restart_error_trigger, RestartAgent().restart_target) == (
                     DEFAULT_CONFIG["actions"]["retry_error_trigger"],
                     DEFAULT_CONFIG["actions"]["scale_queue_trigger"],
-                    DEFAULT_CONFIG["actions"]["restart_error_trigger"])
+                    DEFAULT_CONFIG["actions"]["restart_error_trigger"],
+                    DEFAULT_CONFIG["actions"]["restart_target"])
 
     errors = (0.0, retry - 0.001, retry, retry + 0.001,
               restart - 0.001, restart, restart + 0.001, 1.0)

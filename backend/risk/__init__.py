@@ -18,11 +18,25 @@ if TYPE_CHECKING:
 
 
 @dataclass(frozen=True)
+class RiskTerm:
+    """One additive risk contribution, keyed by the action(s) that caused it.
+
+    ``reason`` is the rendered prose for the audit trail; consumers that need
+    the numbers or the action names must read the fields, never re-parse it.
+    """
+
+    actions: tuple[str, ...]
+    basis_points: int
+    reason: str
+
+
+@dataclass(frozen=True)
 class RiskAssessment:
     predicted_risk: float
     reasons: list[str]
     simulated: bool = True
     measured: bool = False
+    terms: tuple[RiskTerm, ...] = ()
 
 
 # Scores are integer basis points (10_000 = certainty); pressures are thousandths.
@@ -88,21 +102,26 @@ def evaluate(
                  _pressure(state.queue_depth, 100),
                  _pressure(state.db_load, 1))
     reasons: list[str] = []
+    terms: list[RiskTerm] = []
     total = 0
     for action in actions:
         term = _term(_BASE[action], pressures)
         total += term
-        reasons.append(f"{action}: base action risk under observable pressure ({term} basis points).")
+        reason = f"{action}: base action risk under observable pressure ({term} basis points)."
+        terms.append(RiskTerm((action,), term, reason))
+        reasons.append(reason)
     for left, right in combinations(actions, 2):
         pair = (left, right)
         if pair in _INTERACTIONS:
             term = _term(_INTERACTIONS[pair], pressures)
             total += term
-            reasons.append(f"{left} x {right}: {_PAIR_EXPLANATIONS[pair]} ({term} basis points).")
+            reason = f"{left} x {right}: {_PAIR_EXPLANATIONS[pair]} ({term} basis points)."
+            terms.append(RiskTerm((left, right), term, reason))
+            reasons.append(reason)
 
     # Integer half-up rounding of basis points to hundredths; no float accumulation.
     cents = (min(total, 10_000) + 50) // 100
-    return RiskAssessment(float(Decimal(cents) / 100), reasons)
+    return RiskAssessment(float(Decimal(cents) / 100), reasons, terms=tuple(terms))
 
 
-__all__ = ["RiskAssessment", "evaluate"]
+__all__ = ["RiskAssessment", "RiskTerm", "evaluate"]

@@ -42,7 +42,7 @@ def test_byte_identical_full_event_replay_and_common_arrivals():
 def test_fairness_observable_state_interface():
     """H1 restriction, not a proof of identical post-action telemetry or counterfactual safety."""
     permitted = {"tick", "error_rate", "latency", "queue_depth", "db_load",
-                 "topology", "incident_flags", "action_history"}
+                 "topology", "incident_flags", "action_history", "service_queues"}
     assert {f.name for f in fields(ObservableState)} == permitted
     observations = []
     planner = default_coordinator()
