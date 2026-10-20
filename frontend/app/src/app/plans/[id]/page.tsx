@@ -3,6 +3,10 @@ import { PlansPage } from './PlansPage';
 
 export const metadata: Metadata = { title: 'Recovery Planning' };
 
-export default function Page({ params }: { params: { id: string } }) {
-  return <PlansPage runId={params.id} />;
+// Next.js 16: dynamic route params are a Promise on the server. Reading
+// params.id synchronously yielded `undefined` at runtime (dev log: "used
+// `params.id`. `params` is a Promise and must be unwrapped").
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <PlansPage runId={id} />;
 }

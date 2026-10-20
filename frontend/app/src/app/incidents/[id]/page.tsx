@@ -5,6 +5,8 @@ export const metadata: Metadata = {
   title: 'Incident Investigation',
 };
 
-export default function Page({ params }: { params: { id: string } }) {
-  return <IncidentPage id={params.id} />;
+// Next.js 16: dynamic route params are a Promise on the server.
+export default async function Page({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
+  return <IncidentPage id={id} />;
 }
