@@ -1,4 +1,4 @@
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,300;0,400;0,500;0,600;0,700;0,800;1,400&family=JetBrains+Mono:wght@400;500&display=swap");
 @import "tailwindcss";
 
 /* ─────────────────────────────────────────────────────────────────────────────
@@ -7,38 +7,42 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  /* Backgrounds */
-  --bg-base: #0b1220;
-  --bg-surface: #111d2e;
-  --bg-elevated: #192337;
-  --bg-hover: #1e2b40;
+  /* Backgrounds — warm cream / off-white */
+  --bg-base: #f5f3ef;
+  --bg-surface: #faf9f7;
+  --bg-elevated: #ffffff;
+  --bg-hover: #ece9e3;
 
   /* Borders */
-  --border: #26344a;
-  --border-subtle: #1c2a3d;
+  --border: #dedad3;
+  --border-subtle: #e8e4dc;
 
   /* Text */
-  --text-primary: #eaf1fa;
-  --text-secondary: #91a3bb;
-  --text-muted: #5a7090;
+  --text-primary: #1a1714;
+  --text-secondary: #5c5650;
+  --text-muted: #9c9690;
 
-  /* Accent (primary cyan) */
-  --accent: #52b8db;
-  --accent-hover: #6bc8e8;
-  --accent-muted: #52b8db1a;
+  /* Accent (cyan → violet gradient pair) */
+  --accent: #2a9fc0;
+  --accent-end: #6c5fe0;
+  --accent-hover: #1e8aab;
+  --accent-muted: #2a9fc014;
+  --accent-gradient: linear-gradient(135deg, #2a9fc0 0%, #6c5fe0 100%);
+  --accent-gradient-soft: linear-gradient(135deg, #2a9fc012 0%, #6c5fe012 100%);
+  --accent-glow: 0 0 16px 0 rgba(42, 159, 192, 0.15), 0 0 36px 0 rgba(108, 95, 224, 0.08);
 
   /* Status */
-  --success: #3bbe8b;
-  --success-muted: #3bbe8b1a;
-  --warning: #e7ad53;
-  --warning-muted: #e7ad531a;
-  --danger: #f07178;
-  --danger-muted: #f071781a;
-  --unknown: #8b9cb0;
-  --unknown-muted: #8b9cb01a;
+  --success: #1d9e6f;
+  --success-muted: #1d9e6f18;
+  --warning: #b87a12;
+  --warning-muted: #b87a1214;
+  --danger: #c94040;
+  --danger-muted: #c9404014;
+  --unknown: #7a8a99;
+  --unknown-muted: #7a8a9914;
 
   /* Typography */
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-sans: "Plus Jakarta Sans", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "Cascadia Code", monospace;
 
   /* Radius */
@@ -71,6 +75,10 @@ html {
 body {
   height: 100%;
   background-color: var(--bg-base);
+  /* Soft warm radial tints for atmosphere */
+  background-image:
+    radial-gradient(ellipse 55% 35% at 8% 0%, rgba(42, 159, 192, 0.06) 0%, transparent 70%),
+    radial-gradient(ellipse 40% 28% at 92% 100%, rgba(108, 95, 224, 0.05) 0%, transparent 70%);
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -93,7 +101,7 @@ body {
   height: 6px;
 }
 ::-webkit-scrollbar-track {
-  background: var(--bg-surface);
+  background: var(--bg-base);
 }
 ::-webkit-scrollbar-thumb {
   background: var(--border);
@@ -123,13 +131,33 @@ body {
   background-color: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
 }
 
 .surface-elevated {
   background-color: var(--bg-elevated);
   border: 1px solid var(--border);
   border-radius: var(--radius-card);
-  box-shadow: 0 4px 12px 0 rgba(0, 0, 0, 0.5);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.08), 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+/* Gradient-bordered card variant */
+.surface-glow {
+  background-color: var(--bg-surface);
+  border-radius: var(--radius-card);
+  position: relative;
+}
+.surface-glow::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: var(--radius-card);
+  padding: 1px;
+  background: linear-gradient(135deg, rgba(82,184,219,0.35) 0%, rgba(124,111,247,0.25) 100%);
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
 }
 
 /* ── Badge utilities ─────────────────────────────────────────────────────────── */
@@ -181,7 +209,7 @@ body {
   align-items: center;
   gap: 8px;
   padding: 6px 12px;
-  background: #2a1a00;
+  background: #fef8ee;
   border: 1px solid var(--warning);
   border-radius: var(--radius-badge);
   color: var(--warning);
@@ -217,9 +245,9 @@ body {
 .skeleton {
   background: linear-gradient(
     90deg,
-    var(--bg-elevated) 25%,
-    var(--bg-hover) 50%,
-    var(--bg-elevated) 75%
+    var(--bg-hover) 25%,
+    rgba(42, 159, 192, 0.07) 50%,
+    var(--bg-hover) 75%
   );
   background-size: 200% 100%;
   animation: shimmer 1.8s ease-in-out infinite;
@@ -238,8 +266,9 @@ body {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--success);
+  background: var(--accent-gradient);
   flex-shrink: 0;
+  box-shadow: 0 0 6px 1px rgba(82, 184, 219, 0.5);
 }
 
 .live-dot::after {
@@ -247,7 +276,7 @@ body {
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  background: var(--success);
+  background: var(--accent);
   animation: pulse-ring 1.8s ease-out infinite;
 }
 
@@ -264,6 +293,11 @@ body {
   height: 100%;
   border-radius: 3px;
   transition: width 0.4s ease;
+  /* gradient fill — colour passed via inline style overrides for danger/warning */
+}
+
+.risk-bar-fill.risk-gradient {
+  background: var(--accent-gradient) !important;
 }
 
 /* ── Hover card lift ─────────────────────────────────────────────────────────── */
@@ -273,8 +307,8 @@ body {
 }
 
 .card-hover:hover {
-  border-color: var(--accent);
-  box-shadow: 0 0 0 1px var(--accent-muted), 0 4px 16px rgba(0,0,0,0.4);
+  border-color: rgba(82, 184, 219, 0.5);
+  box-shadow: var(--accent-glow), 0 4px 16px rgba(0, 0, 0, 0.4);
   transform: translateY(-1px);
 }
 
@@ -317,7 +351,7 @@ body {
 
 .hypothesis-banner {
   padding: 4px 10px;
-  background: #2a1600;
+  background: #fef6e8;
   border: 1px solid var(--warning);
   border-radius: var(--radius-badge);
   color: var(--warning);
@@ -332,7 +366,7 @@ body {
 .dialog-overlay {
   position: fixed;
   inset: 0;
-  background: rgba(11, 18, 32, 0.85);
+  background: rgba(245, 243, 239, 0.82);
   backdrop-filter: blur(4px);
   z-index: 50;
   display: flex;

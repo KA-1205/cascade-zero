@@ -14,8 +14,8 @@ function SidebarFallback({ open }: { open: boolean }) {
   return (
     <aside
       style={{
-        width: open ? 220 : 56,
-        minWidth: open ? 220 : 56,
+        width: open ? 236 : 60,
+        minWidth: open ? 236 : 60,
         backgroundColor: 'var(--bg-surface)',
         borderRight: '1px solid var(--border)',
         flexShrink: 0,

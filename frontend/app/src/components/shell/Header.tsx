@@ -39,15 +39,17 @@ export function Header({ onMenuToggle }: HeaderProps) {
   return (
     <header
       style={{
-        height: 56,
+        height: 60,
         backgroundColor: 'var(--bg-surface)',
         borderBottom: '1px solid var(--border)',
+        boxShadow: '0 1px 0 0 rgba(42,159,192,0.10), 0 4px 20px 0 rgba(42,159,192,0.03)',
         display: 'flex',
         alignItems: 'center',
         gap: 12,
-        padding: '0 20px',
+        padding: '0 24px',
         flexShrink: 0,
         zIndex: 10,
+        position: 'relative',
       }}
     >
       {/* Menu toggle for mobile */}
@@ -78,23 +80,33 @@ export function Header({ onMenuToggle }: HeaderProps) {
           display: 'flex',
           alignItems: 'center',
           gap: 8,
-          padding: '5px 10px',
+          padding: '5px 12px',
           backgroundColor: 'var(--bg-elevated)',
           border: '1px solid var(--border)',
-          borderRadius: 8,
+          borderRadius: 9,
           fontSize: 12,
           color: 'var(--text-secondary)',
+          boxShadow: '0 1px 3px rgba(0,0,0,0.05)',
         }}
       >
         <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
           <circle cx="6" cy="6" r="5" stroke="currentColor" strokeWidth="1.2" />
           <path d="M6 3.5V6L7.5 7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
-        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 500 }}>
+        <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, letterSpacing: '-0.01em' }}>
           {runId}
         </span>
         <span style={{ color: 'var(--border)', margin: '0 2px' }}>·</span>
-        <span style={{ color: 'var(--accent)', fontWeight: 500 }}>backend run</span>
+        <span
+          style={{
+            fontWeight: 500,
+            background: 'linear-gradient(90deg, #2a9fc0, #6c5fe0)',
+            WebkitBackgroundClip: 'text',
+            WebkitTextFillColor: 'transparent',
+          }}
+        >
+          backend run
+        </span>
       </div>
 
       {/* Spacer */}
@@ -139,8 +151,9 @@ export function Header({ onMenuToggle }: HeaderProps) {
         style={{
           fontFamily: 'var(--font-mono)',
           fontSize: 12,
+          fontWeight: 500,
           color: 'var(--text-muted)',
-          letterSpacing: '0.05em',
+          letterSpacing: '0.04em',
           minWidth: 65,
           textAlign: 'right',
         }}

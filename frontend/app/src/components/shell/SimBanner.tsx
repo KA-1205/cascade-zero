@@ -10,7 +10,7 @@ export function SimBanner() {
         alignItems: 'center',
         gap: 10,
         padding: '6px 20px',
-        backgroundColor: '#1c1200',
+        backgroundColor: '#fef8ee',
         borderBottom: '1px solid var(--warning)',
         fontSize: 12,
         color: 'var(--warning)',
