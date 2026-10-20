@@ -65,6 +65,16 @@ export const liveTransport = {
     return apiFetch<Run>(`/v1/runs/${runId}`);
   },
 
+  async getEvents(runId: string): Promise<CascadeEvent[]> {
+    const response = await fetch(`${BASE}/v1/runs/${runId}/events`, { cache: 'no-store' });
+    if (!response.ok) throw new Error(`Events for run ${runId}: ${response.status}`);
+    const body = await response.text();
+    return body.split(/\n\n+/).flatMap((block) => {
+      const line = block.split('\n').find((part) => part.startsWith('data: '));
+      return line ? [JSON.parse(line.slice(6)) as CascadeEvent] : [];
+    });
+  },
+
   /**
    * Adapter alias, not a contract endpoint: the UI routes by
    * `incidents/{id}` but the contract has no /v1/incidents resource, so the
@@ -89,22 +99,14 @@ export const liveTransport = {
 
   /**
    * POST /v1/plans/{plan_id}/approval — fail-closed on the backend: requires
-   * `Authorization: Bearer $CASCADE_APPROVAL_TOKEN` and an `Idempotency-Key`
-   * (decision D-0039 closed the previously documented missing-header gap).
-   * The token is read from NEXT_PUBLIC_APPROVAL_TOKEN and must match the
-   * backend's CASCADE_APPROVAL_TOKEN. NOTE: NEXT_PUBLIC_ vars are baked into
-   * the client bundle — acceptable only because this backend is a
-   * loopback-only sandbox; a real deployment must keep the token server-side.
+   * The Next server route supplies the sandbox bearer token from its private
+   * environment. It never enters the browser bundle.
    */
   async approvePlan(planId: string, approved: boolean, reason?: string): Promise<void> {
     const key = crypto.randomUUID();
-    const token = process.env.NEXT_PUBLIC_APPROVAL_TOKEN;
-    await apiFetch<void>(`/v1/plans/${planId}/approval`, {
+    await apiFetch<void>(`/api/approval/${encodeURIComponent(planId)}`, {
       method: 'POST',
-      headers: {
-        'Idempotency-Key': key,
-        ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      },
+      headers: { 'Idempotency-Key': key },
       body: JSON.stringify({ approved, reason }),
     });
   },
