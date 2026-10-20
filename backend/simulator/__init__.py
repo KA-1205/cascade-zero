@@ -21,6 +21,8 @@ from pathlib import Path
 from types import MappingProxyType
 from typing import Any
 
+from backend.actions import ACTION_AGENTS
+
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "config_version": "f1-v1",
@@ -28,7 +30,8 @@ DEFAULT_CONFIG: dict[str, Any] = {
     "topology": {"gateway": 120, "orders": 80, "payments": 80, "database": 100},
     "db_connection_limit": 55,
     "db_duration": 1,
-    "fault": {"start": 10, "end": 35, "degraded_capacity": 34,
+    "fault": {"service_name": "database", "start": 10, "end": 35,
+              "degraded_capacity": 34,
               "degraded_duration": 3, "recovery_capacity": 72,
               "recovery_end": 48, "recovery_duration": 2},
     "traffic": {"arrival": 55, "noise": 5, "queue_limit": 180,
@@ -36,7 +39,9 @@ DEFAULT_CONFIG: dict[str, Any] = {
                 "retry_delay": 1, "base_retry_probability": 0.45,
                 "increased_retry_probability": 0.95},
     "actions": {"retry_error_trigger": 0.05, "scale_queue_trigger": 25,
-                "restart_error_trigger": 0.18, "replica_startup": 4,
+                "restart_error_trigger": 0.18, "restart_target": "orders",
+                "disabled_actions": [],
+                "replica_startup": 4,
                 "replica_capacity": 28, "replica_db_slots": 8,
                 "restart_downtime": 2, "restart_warmup": 3,
                 "restart_warmup_fraction": 0.45,
@@ -72,6 +77,13 @@ def load_config(path: str | Path | dict | None = None) -> dict[str, Any]:
         if any(isinstance(v, (int, float)) and v < 0 for v in config[section].values()):
             raise ValueError(f"negative parameter in {section}")
     t, f = config["traffic"], config["fault"]
+    if f.get("service_name") not in config["topology"]:
+        raise ValueError("fault.service_name must name a service in the topology")
+    if config["actions"].get("restart_target") not in ("orders", "payments"):
+        raise ValueError("actions.restart_target must be orders or payments")
+    if not set(config["actions"].get("disabled_actions", [])) <= {
+            "increase_retries", "add_replicas", "restart_service"}:
+        raise ValueError("actions.disabled_actions must name known actions")
     if (t["max_attempts"] < 1 or t["timeout"] < 1 or t["transaction_ttl"] < 1
             or t["queue_limit"] < 1 or config["db_connection_limit"] < 1
             or config["db_duration"] < 1 or f["degraded_duration"] < 1
@@ -81,6 +93,40 @@ def load_config(path: str | Path | dict | None = None) -> dict[str, Any]:
         if not 0 <= t[key] <= 1:
             raise ValueError(f"{key} must be in [0, 1]")
     return config
+
+
+# Named scenario overlays: partial config objects accepted by load_config.
+SCENARIOS: dict[str, dict[str, Any]] = {
+    # Primary F1 fault: the shared database degrades; both routes suffer.
+    "db_slowdown": {},
+    # The payments service itself degrades; its queue grows while orders stays
+    # calm. Restart targets payments here and surfaces early (TTL failures are
+    # the only error signal). Extra orders replicas cannot help a payments
+    # fault, so that action is off the menu.
+    "payments_degradation": {
+        "fault": {"service_name": "payments", "degraded_capacity": 24,
+                  "degraded_duration": 2, "recovery_capacity": 60},
+        "actions": {"restart_target": "payments", "restart_error_trigger": 0.05,
+                    "disabled_actions": ["add_replicas"]},
+    },
+    # Sustained arrival surge: every upstream queue grows before errors appear.
+    # The database fault window is kept as a no-op so phase markers still fire.
+    # Restarting a service under pure overload only adds downtime, so restart
+    # is off the menu; scaling out and retry policy are the live choices.
+    "traffic_surge": {
+        "traffic": {"arrival": 95, "noise": 8},
+        "fault": {"degraded_capacity": 100, "degraded_duration": 1,
+                  "recovery_capacity": 100, "recovery_duration": 1},
+        "actions": {"disabled_actions": ["restart_service"]},
+    },
+}
+
+
+def scenario_overlay(name: str) -> dict[str, Any]:
+    """Return the config overlay for a named scenario; unknown names raise."""
+    if name not in SCENARIOS:
+        raise ValueError(f"unknown scenario: {name}")
+    return copy.deepcopy(SCENARIOS[name])
 
 
 @dataclass(frozen=True)
@@ -93,6 +139,7 @@ class ObservableState:
     topology: Mapping[str, Any]
     incident_flags: tuple[str, ...]
     action_history: tuple[tuple[str, int], ...]
+    service_queues: Mapping[str, int] = field(default_factory=dict)
 
 
 @dataclass
@@ -159,7 +206,9 @@ def observe(run: _Run, tick: int) -> ObservableState:
                                ("elevated_errors", m["error_rate"] > 0.05),
                                ("high_queue", m["queue_depth"] > 25),
                                ("db_busy", m["db_load"] > 0.8)) if present),
-                           tuple(run.action_history))
+                           tuple(run.action_history),
+                           MappingProxyType({name: len(queue)
+                                             for name, queue in run.queues.items()}))
 
 
 def _emit(run: _Run, kind: str, payload: dict) -> None:
@@ -181,7 +230,7 @@ def _proposals(policy: str, state: ObservableState, action_config: dict) -> list
                 ("restart_service", state.error_rate >= a["restart_error_trigger"]))
     proposals = []
     for name, triggered in triggers:
-        if not triggered:
+        if not triggered or name in a.get("disabled_actions", []):
             continue
         if policy == "guardrails":
             last = next((tick for action, tick in reversed(state.action_history)
@@ -194,13 +243,14 @@ def _proposals(policy: str, state: ObservableState, action_config: dict) -> list
             if name == "increase_retries" and sum(1 for action, _ in state.action_history
                                                    if action == name) >= a["guardrail_max_retries"]:
                 continue
-        proposals.append({"agent_id": {"increase_retries": "retry-agent",
-                                        "add_replicas": "scale-agent",
-                                        "restart_service": "restart-agent"}[name],
-                          "action": name, "target": "orders" if name != "increase_retries" else "database",
+        proposals.append({"agent_id": ACTION_AGENTS[name],
+                          "action": name,
+                          "target": {"increase_retries": "database",
+                                     "add_replicas": "orders",
+                                     "restart_service": a["restart_target"]}[name],
                           "expected_effect": {"increase_retries": "more attempts sharing DB slots",
                                               "add_replicas": "more orders workers sharing DB slots after startup",
-                                              "restart_service": "orders downtime, warm-up and catch-up spike"}[name],
+                                              "restart_service": f"{a['restart_target']} downtime, warm-up and catch-up spike"}[name],
                           "cost": "shared DB connections", "confidence": 0.5,
                           "ttl": 1})
     return proposals
@@ -260,6 +310,8 @@ def _retry_or_fail(run: _Run, attempt: _Attempt) -> None:
 def _capacity(run: _Run) -> tuple[int, int]:
     c = run.config
     f = c["fault"]
+    if f["service_name"] != "database":
+        return c["topology"]["database"], c["db_duration"]
     if f["start"] <= run.tick <= f["end"]:
         return f["degraded_capacity"], f["degraded_duration"]
     if run.tick <= f["recovery_end"] and run.tick > f["end"]:
@@ -268,11 +320,27 @@ def _capacity(run: _Run) -> tuple[int, int]:
 
 
 def _service_capacity(run: _Run, name: str) -> int:
-    base = run.config["topology"][name]
+    c = run.config
+    a = c["actions"]
+    f = c["fault"]
+    base = c["topology"][name]
     if name != "orders":
+        # A restart of the faulted service supersedes the degradation schedule:
+        # it restores healthy capacity through its own downtime/warmup/spike
+        # window rather than a fraction of degraded capacity.
+        if f["service_name"] == name:
+            if f["start"] <= run.tick <= f["end"]:
+                base = min(base, f["degraded_capacity"])
+            elif f["end"] < run.tick <= f["recovery_end"]:
+                base = min(base, f["recovery_capacity"])
+        if name != a["restart_target"] or not run.restarts:
+            return base
+        base = c["topology"][name]
+    elif not run.restarts or a["restart_target"] != "orders":
+        base += sum(a["replica_capacity"] for ready in run.replicas if ready <= run.tick)
         return base
-    a = run.config["actions"]
-    base += sum(a["replica_capacity"] for ready in run.replicas if ready <= run.tick)
+    else:
+        base += sum(a["replica_capacity"] for ready in run.replicas if ready <= run.tick)
     if run.restarts:
         elapsed = run.tick - run.restarts[-1]
         if elapsed < a["restart_downtime"]:
@@ -296,9 +364,11 @@ def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=N
     """Return immutable-by-convention result with trace, hash and unique-user metrics."""
     if seed < 0:
         raise ValueError("seed must be non-negative")
-    if policy == "coordinated" and plan is None:
-        raise NotImplementedError("joint-action coordination is implemented in phase 2, task CZ-008")
-    if policy not in ("none", "independent", "guardrails", "coordinated"):
+    if policy in ("coordinated", "ai_coordinated") and plan is None:
+        raise NotImplementedError(
+            f"policy {policy} requires a plan callable")
+    if policy not in ("none", "independent", "guardrails", "coordinated",
+                      "ai_coordinated"):
         raise ValueError(f"unknown policy: {policy}")
     cfg = load_config(config)
     # Seed strings, not tuples: random.Random does not accept tuple seeds.
@@ -311,15 +381,16 @@ def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=N
     for tick in range(cfg["ticks"]):
         run.tick = tick
         state = observe(run, tick)
-        if policy == "coordinated":
+        if policy in ("coordinated", "ai_coordinated"):
             proposals = _proposals("independent", state, cfg["actions"])
             decision = plan(state, proposals)
             selected = decision.selected_actions
             if (not isinstance(selected, list) or len(selected) != len(set(selected))
                     or not set(selected) <= {p["action"] for p in proposals}):
                 raise ValueError("plan selected actions outside the proposed set")
+            extra = getattr(decision, "extra", None) or {}
             _emit(run, "decision", {"actions": selected, "predicted_risk": decision.predicted_risk,
-                                    "reasons": decision.reasons, "simulated": True})
+                                    "reasons": decision.reasons, "simulated": True, **extra})
             for proposal in proposals:
                 if proposal["action"] in selected:
                     _apply(run, proposal)
@@ -414,7 +485,9 @@ def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=N
             run.recovery_time = tick - h["consecutive_ticks"] + 1 - fault["start"]
         _emit(run, "metric", {**run.telemetry, "arrivals": arrivals,
                               "unique_completed": completed, "unique_failed": failed_tick,
-                              "attempts_total": run.total_attempts, "dropped": run.dropped})
+                              "attempts_total": run.total_attempts, "dropped": run.dropped,
+                              "service_queues": {name: len(queue)
+                                                 for name, queue in run.queues.items()}})
     run.tick = cfg["ticks"]
     for tx in run.transactions:
         _fail(run, tx)  # End-of-horizon pending users count as failures once.

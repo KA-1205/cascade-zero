@@ -30,7 +30,9 @@ def test_cli_byte_identical_across_processes():
     first = subprocess.run(command, cwd=root, check=True, capture_output=True).stdout
     second = subprocess.run(command, cwd=root, check=True, capture_output=True).stdout
     assert first == second
-    assert len(first.splitlines()) == 3
+    # all = none, independent, guardrails and coordinated (via the default
+    # constraint coordinator, matching the API wiring).
+    assert len(first.splitlines()) == 4
 
 
 def test_unique_accounting_under_retries():
@@ -53,7 +55,7 @@ def test_unique_accounting_under_retries():
 def test_observation_field_allowlist_and_isolation():
     assert {f.name for f in fields(ObservableState)} == {
         "tick", "error_rate", "latency", "queue_depth", "db_load", "topology",
-        "incident_flags", "action_history"}
+        "incident_flags", "action_history", "service_queues"}
     run = _Run(42, "none", load_config(), random.Random(42), random.Random(43), "test")
     state = observe(run, 0)
     assert "capacity" not in repr(state)
@@ -69,8 +71,10 @@ def test_observation_field_allowlist_and_isolation():
 
 
 def test_coordinated_is_not_implemented():
-    with pytest.raises(NotImplementedError, match="phase 2, task CZ-008"):
+    with pytest.raises(NotImplementedError, match="requires a plan callable"):
         simulate(42, "coordinated")
+    with pytest.raises(NotImplementedError, match="requires a plan callable"):
+        simulate(42, "ai_coordinated")
 
 
 def test_guardrails_caps_and_cooldown():
