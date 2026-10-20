@@ -92,14 +92,21 @@ function ConnectionStatus({ status }: { status: SseStatus }) {
 
 // ── Event → view-model shapers ───────────────────────────────────────────────
 
-/** Unseen metric event → chart point. Dedup happens before this is called. */
+/**
+ * Unseen metric event → chart point. Dedup happens before this is called.
+ *
+ * The chart axis is percent, and the two payload families disagree on units:
+ * fixture payloads carry percents directly (error_rate_pct, db_pressure_pct);
+ * contract payloads carry fractions (error_rate, db_load) plus an arrivals
+ * count. Contract fractions are scaled ×100 into the same axis.
+ */
 function metricPointFromEvent(event: CascadeEvent): TickMetric {
-  const p = event.payload as MetricPayload;
+  const p = event.payload as MetricPayload & { error_rate?: number; db_load?: number; arrivals?: number };
   return {
     tick: event.tick,
-    error_rate_pct: p.error_rate_pct,
-    db_pressure_pct: p.db_pressure_pct,
-    throughput_rps: p.throughput_rps,
+    error_rate_pct: p.error_rate_pct ?? (p.error_rate != null ? p.error_rate * 100 : 0),
+    db_pressure_pct: p.db_pressure_pct ?? (p.db_load != null ? p.db_load * 100 : 0),
+    throughput_rps: p.throughput_rps ?? p.arrivals ?? 0,
   };
 }
 
@@ -114,17 +121,21 @@ function proposalFromEvent(event: CascadeEvent): AgentProposal {
  * started_at come from what the adapter already returned; content fields the
  * route/adapter cannot know (severity, status, affected services) come from
  * the stream.
+ *
+ * Contract incident payloads carry only `{phase}` — fields the payload does
+ * not supply must keep their current values, never become undefined (decision
+ * D-0039 follow-up: the first live incident event used to blank the header).
  */
 function incidentHeaderFromEvent(current: Incident | null, event: CascadeEvent): Incident {
-  const p = event.payload as IncidentPayload;
+  const p = event.payload as Partial<IncidentPayload>;
   return {
     id: current?.id ?? event.run_id,
     run_id: event.run_id,
-    title: p.title,
-    severity: p.severity,
-    status: p.status,
+    title: p.title ?? current?.title ?? 'Untitled incident',
+    severity: p.severity ?? current?.severity,
+    status: p.status ?? current?.status,
     started_at: current?.started_at ?? event.timestamp,
-    affected_services: p.affected_services,
+    affected_services: p.affected_services ?? current?.affected_services,
     hypotheses: current?.hypotheses,
     timeline: current?.timeline,
   };
@@ -707,19 +718,66 @@ function TimelineEvent({ event, isLast }: { event: CascadeEvent; isLast: boolean
   );
 }
 
+/**
+ * Timeline row text. Composed from whichever fields are actually present:
+ * fixture payloads (mock mode) and contract payloads (live mode) name their
+ * fields differently, and a missing field must degrade the text, never throw —
+ * an unguarded `.join` on a contract `incident` payload ({phase} only) used to
+ * take down the whole timeline tab.
+ */
 function buildSummary(event: CascadeEvent): string {
   const p = event.payload as unknown as Record<string, unknown>;
   switch (event.kind) {
-    case 'metric':
-      return `DB pressure: ${p.db_pressure_pct}% · Error rate: ${p.error_rate_pct}% · Throughput: ${p.throughput_rps} rps`;
-    case 'incident':
-      return `"${p.title}" (${p.severity}) affecting ${(p.affected_services as string[]).join(', ')}`;
-    case 'proposal':
-      return `${p.agent} proposed "${p.action}" on ${p.target_service} · risk: ${p.risk} · confidence: ${Math.round((p.confidence as number) * 100)}%`;
-    case 'decision':
-      return `Plan ${p.plan_id} was ${p.decision}. ${(p.reasons as string[])?.[0] ?? ''}`;
-    case 'execution':
-      return `Action "${p.action}" → ${p.step_status}. ${p.log_line ?? ''}`;
+    case 'metric': {
+      const parts: string[] = [];
+      // Fixture payloads carry percents; contract payloads carry fractions.
+      if (p.db_pressure_pct != null) parts.push(`DB pressure: ${p.db_pressure_pct}%`);
+      else if (p.db_load != null) parts.push(`DB load: ${Math.round((p.db_load as number) * 100)}%`);
+      if (p.error_rate_pct != null) parts.push(`Error rate: ${p.error_rate_pct}%`);
+      else if (p.error_rate != null) parts.push(`Error rate: ${Math.round((p.error_rate as number) * 100)}%`);
+      if (p.throughput_rps != null) parts.push(`Throughput: ${p.throughput_rps} rps`);
+      else if (p.arrivals != null) parts.push(`Arrivals: ${p.arrivals}/tick`);
+      if (p.latency != null) parts.push(`Latency: ${p.latency}ms`);
+      if (p.queue_depth != null) parts.push(`Queue: ${p.queue_depth}`);
+      return parts.length ? parts.join(' · ') : JSON.stringify(p).slice(0, 120);
+    }
+    case 'incident': {
+      // Fixture payloads carry the full header; contract payloads only phase.
+      const parts: string[] = [];
+      if (p.phase != null) parts.push(`Phase: ${p.phase}`);
+      if (p.title != null) {
+        const services = Array.isArray(p.affected_services)
+          ? (p.affected_services as string[]).join(', ')
+          : null;
+        parts.push(`"${p.title}"${p.severity ? ` (${p.severity})` : ''}${services ? ` · services: ${services}` : ''}`);
+      }
+      return parts.length ? parts.join(' · ') : JSON.stringify(p).slice(0, 120);
+    }
+    case 'proposal': {
+      if (p.agent == null || p.action == null) return JSON.stringify(p).slice(0, 120);
+      const confidence = p.confidence != null ? ` · confidence: ${Math.round((p.confidence as number) * 100)}%` : '';
+      return `${p.agent} proposed "${p.action}" on ${p.target_service} · risk: ${p.risk}${confidence}`;
+    }
+    case 'decision': {
+      // Fixture payloads name the plan; contract payloads carry the action list.
+      if (p.plan_id != null) {
+        return `Plan ${p.plan_id} was ${p.decision}. ${(p.reasons as string[])?.[0] ?? ''}`;
+      }
+      const actions = Array.isArray(p.actions) && (p.actions as string[]).length
+        ? (p.actions as string[]).join(', ')
+        : 'no actions';
+      const risk = p.predicted_risk != null ? ` · predicted risk ${p.predicted_risk}` : '';
+      const reason = (p.reasons as string[])?.[0];
+      return `Proposed: ${actions}${risk}${reason ? ` — ${reason}` : ''}`;
+    }
+    case 'execution': {
+      const target = p.target ?? p.target_service;
+      const head = `Action "${p.action ?? 'unknown'}"${target != null ? ` on ${target}` : ''}`;
+      const status = p.step_status != null ? ` → ${p.step_status}` : '';
+      const tail = [p.log_line, p.agent_id != null ? `agent: ${p.agent_id}` : null]
+        .filter(Boolean).join(' · ');
+      return `${head}${status}${tail ? ` — ${tail}` : ''}`;
+    }
     case 'verification':
       return `Outcome: ${p.outcome} · Δ failed txns: ${p.delta_failed_txns} · Actual DB pressure: ${p.actual_db_pressure_pct}%`;
     default:
