@@ -163,8 +163,38 @@ def test_coordinated_decision_plans_and_approval(api, monkeypatch):
     _, _, raw = request(api, f"/v1/runs/{run['id']}/plans")
     updated = json.loads(raw)
     validate_response("/v1/runs/{run_id}/plans", "get", 200, updated)
-    executed = next(p for p in updated if p["id"] == plan["id"])
-    assert executed == {**plan, "status": "executed"}
+    approved = next(p for p in updated if p["id"] == plan["id"])
+    # No gated executor is configured: the actions already ran inside the
+    # deterministic simulation, so the honest status is "approved", not
+    # "executed" (reserved for a sent n8n execution).
+    assert approved == {**plan, "status": "approved"}
+
+
+def test_approval_with_gated_executor_records_execution(api, monkeypatch):
+    """With n8n configured and sending succeeding, the plan is honestly 'executed'."""
+    import backend.api as api_module
+    from backend.integrations.n8n import GatedExecutor
+
+    def ok_transport(url, payload, headers):
+        return 200
+
+    monkeypatch.setenv("CASCADE_APPROVAL_TOKEN", "local-token")
+    monkeypatch.setattr(api_module, "executor_from_env",
+                        lambda: GatedExecutor(ok_transport, allow_sandbox_actions=True,
+                                              webhook_url="http://sandbox.invalid/hook"))
+    run = create(api, seed=17)
+    _, _, raw = request(api, f"/v1/runs/{run['id']}/plans")
+    plan = next(p for p in json.loads(raw) if p["actions"])
+    status, _, _ = request(api, f"/v1/plans/{plan['id']}/approval", "POST",
+                           {"approved": True},
+                           {"Authorization": "Bearer local-token",
+                            "Idempotency-Key": "exec-1"})
+    assert status == 202
+    _, _, raw = request(api, f"/v1/runs/{run['id']}/plans")
+    executed = next(p for p in json.loads(raw) if p["id"] == plan["id"])
+    assert executed["status"] == "executed"
+    assert executed["execution"]["status"] == "sent"
+    assert executed["execution"]["measured"] is True
 
 
 def test_unknown_resources_and_invalid_requests(api):

@@ -16,7 +16,18 @@ paths:
       operationId: getTopology
       responses:
         '200': {description: Service topology, content: {application/json: {schema: {$ref: '#/components/schemas/Topology'}}}}
+  /v1/admin/status:
+    get:
+      operationId: getAdminStatus
+      description: Aggregate project status — run counts, AI engine health, scenario action menus.
+      responses:
+        '200': {description: Status, content: {application/json: {schema: {type: object, additionalProperties: true}}}}
   /v1/runs:
+    get:
+      operationId: listRuns
+      description: Run history, newest first; in-memory, cleared on server restart.
+      responses:
+        '200': {description: Runs, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Run'}}}}}
     post:
       operationId: createRun
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RunRequest'}}}}
@@ -41,6 +52,16 @@ paths:
       parameters: [{name: run_id, in: path, required: true, schema: {type: string}}]
       responses:
         '200': {description: Candidate plans, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Plan'}}}}}
+  /v1/plans/{plan_id}/backtest:
+    post:
+      operationId: backtestPlan
+      description: Local what-if replay of a candidate plan against the recorded seed; nothing live is touched. Requires operator auth.
+      parameters: [{name: plan_id, in: path, required: true, schema: {type: string}}]
+      responses:
+        '200': {description: Backtest verdict, content: {application/json: {schema: {type: object, additionalProperties: true}}}}
+        '403': {description: Forbidden}
+        '404': {description: Plan not found}
+      security: [{bearerAuth: []}]
   /v1/plans/{plan_id}/approval:
     post:
       operationId: approvePlan
@@ -61,8 +82,8 @@ components:
       required: [seed, scenario, policy]
       properties:
         seed: {type: integer, minimum: 0}
-        scenario: {type: string, enum: [db_slowdown]}
-        policy: {type: string, enum: [none, independent, guardrails, coordinated]}
+        scenario: {type: string, enum: [db_slowdown, payments_degradation, traffic_surge]}
+        policy: {type: string, enum: [none, independent, guardrails, coordinated, ai_coordinated]}
     Run:
       type: object
       required: [id, seed, scenario, policy, state, simulated]
@@ -73,6 +94,9 @@ components:
         policy: {type: string}
         state: {type: string, enum: [created, running, completed, failed, cancelled]}
         simulated: {type: boolean}
+        created_at: {type: string}
+        event_count: {type: integer}
+        plan_count: {type: integer}
         metrics: {type: object, additionalProperties: {type: number}}
     Topology:
       type: object
@@ -91,3 +115,4 @@ components:
         status: {type: string, enum: [candidate, rejected, approved, delayed, executed]}
         simulated: {type: boolean}
         reasons: {type: array, items: {type: string}}
+        ai: {type: object, description: AI-loop provenance (diagnosis, model, probes, checks, fallback); present on ai_coordinated plans., additionalProperties: true}
