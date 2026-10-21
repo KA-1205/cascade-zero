@@ -4,7 +4,7 @@ import { AppShell } from "@/components/shell/AppShell";
 
 export const metadata: Metadata = {
   title: {
-    default: "Cascade Zero — Safety Firewall for Autonomous Recovery Agents",
+    default: "Cascade Zero: safety firewall for autonomous recovery agents",
     template: "%s | Cascade Zero",
   },
   description:

@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
+import { api } from '@/lib/api';
 
 interface HeaderProps {
   onMenuToggle: () => void;
@@ -9,6 +10,7 @@ interface HeaderProps {
 export function Header({ onMenuToggle }: HeaderProps) {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [runId, setRunId] = useState<string>('No run selected');
+  const [apiLive, setApiLive] = useState(false);
 
   useEffect(() => {
     const fmt = () =>
@@ -26,6 +28,23 @@ export function Header({ onMenuToggle }: HeaderProps) {
       clearTimeout(initial);
       clearInterval(interval);
     };
+  }, []);
+
+  useEffect(() => {
+    // The indicator must tell the truth: probe the backend instead of
+    // painting a permanent green dot.
+    let cancelled = false;
+    const check = async () => {
+      try {
+        const health = await api.getHealth();
+        if (!cancelled) setApiLive(health.status === 'ok');
+      } catch {
+        if (!cancelled) setApiLive(false);
+      }
+    };
+    check();
+    const interval = setInterval(check, 30000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   useEffect(() => {
@@ -94,7 +113,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
           <path d="M6 3.5V6L7.5 7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, letterSpacing: '-0.01em' }}>
-          {runId}
+          Run {typeof runId === 'string' ? runId.slice(0, 8) : '—'}
         </span>
         <span style={{ color: 'var(--border)', margin: '0 2px' }}>·</span>
         <span
@@ -105,14 +124,14 @@ export function Header({ onMenuToggle }: HeaderProps) {
             WebkitTextFillColor: 'transparent',
           }}
         >
-          backend run
+          live run
         </span>
       </div>
 
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
-      {/* Live SSE status */}
+      {/* Live API status — reflects a real health probe, not a static dot */}
       <div
         style={{
           display: 'flex',
@@ -121,10 +140,18 @@ export function Header({ onMenuToggle }: HeaderProps) {
           fontSize: 12,
           color: 'var(--text-secondary)',
         }}
-        title="Sandbox API mode"
+        title="Live backend connection"
       >
-        <span className="live-dot" style={{ width: 7, height: 7 }} />
-        <span>Sandbox API</span>
+        <span
+          className="live-dot"
+          style={{
+            width: 7,
+            height: 7,
+            background: apiLive ? undefined : 'var(--danger)',
+            animation: apiLive ? undefined : 'none',
+          }}
+        />
+        <span>{apiLive ? 'Live API' : 'API offline'}</span>
       </div>
 
       <div style={{ width: 1, height: 20, backgroundColor: 'var(--border)' }} />
@@ -134,16 +161,16 @@ export function Header({ onMenuToggle }: HeaderProps) {
         style={{
           padding: '3px 8px',
           borderRadius: 6,
-          backgroundColor: 'var(--warning-muted)',
-          border: '1px solid var(--warning)',
-          color: 'var(--warning)',
+          backgroundColor: 'var(--accent-muted, rgba(42, 159, 192, 0.12))',
+          border: '1px solid var(--accent, #2a9fc0)',
+          color: 'var(--accent, #2a9fc0)',
           fontSize: 11,
           fontWeight: 600,
           letterSpacing: '0.05em',
           textTransform: 'uppercase',
         }}
       >
-        Simulated infrastructure
+        AI Recovery Engine
       </div>
 
       {/* Clock */}

@@ -3,7 +3,6 @@
 import React, { useState, Suspense } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
-import { SimBanner } from './SimBanner';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -52,9 +51,6 @@ export function AppShell({ children }: AppShellProps) {
         }}
       >
         <Header onMenuToggle={() => setSidebarOpen((v) => !v)} />
-
-        {/* Sim banner */}
-        <SimBanner />
 
         {/* Page content */}
         <main

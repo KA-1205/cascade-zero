@@ -67,6 +67,18 @@ const NAV_SECTIONS = [
     label: 'Govern',
     items: [
       {
+        href: '/admin',
+        label: 'Project Admin',
+        icon: (
+          <svg width="16" height="16" viewBox="0 0 16 16" fill="none">
+            <circle cx="8" cy="5" r="2.5" stroke="currentColor" strokeWidth="1.5" />
+            <path d="M2.5 14C3.2 11.5 5.4 10 8 10C10.6 10 12.8 11.5 13.5 14" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+            <circle cx="13" cy="4" r="1.25" fill="currentColor" opacity="0.7" />
+            <circle cx="3" cy="4" r="1.25" fill="currentColor" opacity="0.7" />
+          </svg>
+        ),
+      },
+      {
         href: '/audit',
         label: 'Audit Trail',
         icon: (
@@ -310,7 +322,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                   flexShrink: 0,
                 }}
               />
-              v0.1.0 · sandbox
+              Cascade Zero v0.1.0
             </div>
           )}
 
