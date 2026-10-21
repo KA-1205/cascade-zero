@@ -1,4 +1,6 @@
 import type {
+  AdminStatus,
+  BacktestResult,
   HealthResponse,
   Topology,
   Run,
@@ -20,10 +22,9 @@ import type {
 // contract without touching backend/**. Set NEXT_PUBLIC_API_URL to bypass the
 // proxy (requires a backend that allows that origin).
 //
-// Responses are typed via `@/types/api` only. There is NO runtime response
-// validation here (zod is a project dependency but is not imported in the
-// transport layer); a malformed backend response would surface as a type
-// mismatch at the consumer, not a thrown ZodError.
+// Responses are typed via `@/types/api` only; there is no runtime response
+// validation, so a malformed backend response surfaces as bad data at the
+// consumer, not a thrown schema error.
 // ─────────────────────────────────────────────────────────────────────────────
 
 const BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
@@ -36,7 +37,8 @@ async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   if (!res.ok) {
     throw new Error(`API ${init?.method ?? 'GET'} ${path} → ${res.status} ${res.statusText}`);
   }
-  return res.json() as Promise<T>;
+  const body = await res.text();
+  return (body ? JSON.parse(body) : undefined) as T;
 }
 
 // SSE reconnect settings: fixed interval, capped number of attempts. The
@@ -48,6 +50,14 @@ const SSE_MAX_RECONNECT_ATTEMPTS = 5;
 export const liveTransport = {
   async getHealth(): Promise<HealthResponse> {
     return apiFetch<HealthResponse>('/v1/health');
+  },
+
+  async listRuns(): Promise<Run[]> {
+    return apiFetch<Run[]>('/v1/runs');
+  },
+
+  async getAdminStatus(): Promise<AdminStatus> {
+    return apiFetch<AdminStatus>('/v1/admin/status');
   },
 
   async getTopology(): Promise<Topology> {
@@ -65,8 +75,17 @@ export const liveTransport = {
     return apiFetch<Run>(`/v1/runs/${runId}`);
   },
 
-  async getEvents(runId: string): Promise<CascadeEvent[]> {
-    const response = await fetch(`${BASE}/v1/runs/${runId}/events`, { cache: 'no-store' });
+  /**
+   * Fetch the run's events as one SSE dump. Pass `afterEventId` to fetch only
+   * the tail: the backend's Last-Event-ID resume returns exactly the events
+   * after that id, so polling a running run never re-downloads its history.
+   */
+  async getEvents(runId: string, afterEventId?: string): Promise<CascadeEvent[]> {
+    const headers: HeadersInit = afterEventId ? { 'Last-Event-ID': afterEventId } : {};
+    const response = await fetch(`${BASE}/v1/runs/${runId}/events`, {
+      cache: 'no-store',
+      headers,
+    });
     if (!response.ok) throw new Error(`Events for run ${runId}: ${response.status}`);
     const body = await response.text();
     return body.split(/\n\n+/).flatMap((block) => {
@@ -95,6 +114,17 @@ export const liveTransport = {
 
   async listPlans(runId: string): Promise<Plan[]> {
     return apiFetch<Plan[]>(`/v1/runs/${runId}/plans`);
+  },
+
+  /**
+   * POST /v1/plans/{plan_id}/backtest through the same-origin proxy — a local
+   * what-if replay of the plan; requires the operator token server-side.
+   */
+  async backtestPlan(planId: string): Promise<BacktestResult> {
+    return apiFetch<BacktestResult>(`/api/backtest/${encodeURIComponent(planId)}`, {
+      method: 'POST',
+      body: '{}',
+    });
   },
 
   /**

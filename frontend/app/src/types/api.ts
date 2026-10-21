@@ -1,17 +1,15 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // Cascade Zero — API type definitions (mirrors contracts/openapi.yaml)
-// Auto-maintained by frontend team; backend must not break these shapes
-// without a contract version bump and frontend sign-off.
+// Backend must not break these shapes without a contract version bump and
+// frontend sign-off.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export type RunState = 'created' | 'running' | 'completed' | 'failed' | 'cancelled';
-export type RunPolicy = 'none' | 'independent' | 'guardrails' | 'coordinated';
-export type RunScenario = 'db_slowdown';
+export type RunPolicy = 'none' | 'independent' | 'guardrails' | 'coordinated' | 'ai_coordinated';
+export type RunScenario = 'db_slowdown' | 'payments_degradation' | 'traffic_surge';
 export type PlanStatus = 'candidate' | 'rejected' | 'approved' | 'delayed' | 'executed';
-export type EventKind = 'metric' | 'incident' | 'proposal' | 'decision' | 'execution' | 'verification';
 export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
 export type IncidentStatus = 'active' | 'investigating' | 'resolved' | 'closed';
-export type ProposalRisk = 'low' | 'medium' | 'high' | 'unknown';
 
 // ── Core domain models ───────────────────────────────────────────────────────
 
@@ -22,19 +20,11 @@ export interface HealthResponse {
 export interface TopologyNode {
   id: string;
   capacity: number;
-  /** Extended: not in MVP contract, used in mock */
-  label?: string;
-  type?: 'gateway' | 'service' | 'database' | 'queue';
-  current_load?: number;
-  health?: 'healthy' | 'degraded' | 'critical';
 }
 
 export interface TopologyEdge {
   from: string;
   to: string;
-  /** Extended: throughput in req/s */
-  throughput?: number;
-  latency_ms?: number;
 }
 
 export interface Topology {
@@ -42,13 +32,8 @@ export interface Topology {
   edges: TopologyEdge[];
 }
 
+/** Simulator metrics bag; numeric fields exactly as the backend reports them. */
 export interface RunMetrics {
-  error_rate_pct?: number;
-  db_pressure_pct?: number;
-  throughput_rps?: number;
-  latency_p95_ms?: number;
-  unique_failed_txns?: number;
-  unique_success_txns?: number;
   [key: string]: number | undefined;
 }
 
@@ -61,14 +46,28 @@ export interface Run {
   simulated: boolean;
   metrics?: RunMetrics;
   /** ISO 8601 wall-clock start */
-  started_at?: string;
-  completed_at?: string;
+  created_at?: string;
+  /** Present when the simulation crashed: exception type and message. */
+  failed_reason?: string;
+  /** Present on direct GET /v1/runs/{id}; omitted from the history list. */
+  trace_hash?: string;
+  event_count?: number;
+  plan_count?: number;
 }
 
 export interface RunRequest {
   seed: number;
   scenario: RunScenario;
   policy: RunPolicy;
+}
+
+/** Provenance of a gated n8n execution, attached at approval time. */
+export interface PlanExecution {
+  status: 'sent' | 'unknown' | 'dry-run';
+  simulated: boolean;
+  measured: boolean;
+  replayed: boolean;
+  error: string | null;
 }
 
 export interface Plan {
@@ -79,133 +78,197 @@ export interface Plan {
   status: PlanStatus;
   simulated: boolean;
   reasons: string[];
-  /** Extended: resource trajectory prediction */
-  resource_trajectory?: ResourceTrajectoryPoint[];
-  constraint_violations?: ConstraintViolation[];
+  /** AI-loop provenance on ai_coordinated plans. */
+  ai?: AIDecisionInfo;
+  /** Present when a gated webhook execution was attempted at approval. */
+  execution?: PlanExecution;
 }
 
-export interface ResourceTrajectoryPoint {
-  tick: number;
-  db_connections_pct: number;
-  estimated_failed_txns: number;
+// ── SSE Events — discriminated by kind so payloads narrow without casts ──────
+
+export interface MetricPayload {
+  error_rate: number;
+  latency: number;
+  queue_depth: number;
+  db_load: number;
+  arrivals: number;
+  unique_completed: number;
+  unique_failed: number;
+  attempts_total: number;
+  dropped: number;
+  service_queues: Record<string, number>;
+  measured?: boolean;
 }
 
-export interface ConstraintViolation {
-  resource: string;
-  limit: number;
-  predicted_peak: number;
-  description: string;
+export interface IncidentPayload {
+  phase: string;
+  measured?: boolean;
 }
 
-// ── SSE Events ───────────────────────────────────────────────────────────────
+/** Not emitted by the simulator today; kept for contract completeness. */
+export interface ProposalPayload {
+  [key: string]: unknown;
+  measured?: boolean;
+}
 
-/**
- * Extended (frontend-only, not in the contract): connection lifecycle of the
- * SSE event stream, reported by both transports via subscribeToEvents' optional
- * onStatus callback. Used by the incident-detail page's connection indicator.
- */
-export type SseStatus = 'connecting' | 'connected' | 'reconnecting' | 'failed' | 'closed';
+export interface DecisionPayload {
+  actions: string[];
+  predicted_risk: number;
+  reasons: string[];
+  simulated?: boolean;
+  measured?: boolean;
+  /** AI-loop provenance on ai_coordinated decisions. */
+  ai?: AIDecisionInfo;
+}
 
-/** Shared SSE subscription signature; mock and live transports must match. */
-export type SseSubscribe = (
-  runId: string,
-  onEvent: (event: CascadeEvent) => void,
-  onError?: (err: Error) => void,
-  onStatus?: (status: SseStatus) => void,
-) => () => void;
+export interface ExecutionPayload {
+  agent_id: string;
+  action: string;
+  target: string;
+  expected_effect: string;
+  cost: string;
+  confidence: number;
+  ttl: number;
+  sandbox_only?: boolean;
+  measured?: boolean;
+}
 
-export interface CascadeEvent {
+/** Not emitted by the simulator today; kept for contract completeness. */
+export interface VerificationPayload {
+  [key: string]: unknown;
+  measured?: boolean;
+}
+
+interface EventEnvelope {
   event_id: string;
   run_id: string;
   tick: number;
-  kind: EventKind;
   simulated: boolean;
-  payload: EventPayload;
   timestamp?: string;
   trace_id?: string;
 }
 
-export type EventPayload =
-  | MetricPayload
-  | IncidentPayload
-  | ProposalPayload
-  | DecisionPayload
-  | ExecutionPayload
-  | VerificationPayload;
+export type CascadeEvent = EventEnvelope & (
+  | { kind: 'metric'; payload: MetricPayload }
+  | { kind: 'incident'; payload: IncidentPayload }
+  | { kind: 'proposal'; payload: ProposalPayload }
+  | { kind: 'decision'; payload: DecisionPayload }
+  | { kind: 'execution'; payload: ExecutionPayload }
+  | { kind: 'verification'; payload: VerificationPayload }
+);
 
-export interface MetricPayload {
-  service_id: string;
-  error_rate_pct: number;
-  db_pressure_pct: number;
-  throughput_rps: number;
-  latency_p95_ms: number;
+export type MetricEvent = CascadeEvent & { kind: 'metric' };
+export type DecisionEvent = CascadeEvent & { kind: 'decision' };
+export type ExecutionEvent = CascadeEvent & { kind: 'execution' };
+export type IncidentEvent = CascadeEvent & { kind: 'incident' };
+
+/**
+ * Connection lifecycle of the SSE event stream, reported by
+ * subscribeToEvents' optional onStatus callback.
+ */
+export type SseStatus = 'connecting' | 'connected' | 'reconnecting' | 'failed' | 'closed';
+
+// ── AI-loop provenance ───────────────────────────────────────────────────────
+
+/** AI-loop provenance merged into decision events and plans (ai_coordinated). */
+export interface AIDecisionInfo {
+  live: boolean;
+  model: string | null;
+  fallback_reason: string | null;
+  latency_ms?: number;
+  prompt_sha256?: string;
+  calls?: number;
+  live_decisions?: number;
+  fallbacks?: number;
+  diagnosis?: {
+    cause: string;
+    affected: string[];
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    confidence: number;
+    rationale: string;
+    checks: string[];
+  };
+  probes?: AIProbeOutcome[];
+  checks?: AICheckResult[];
+  checks_evaluated?: AICheckResult[];
 }
 
-export interface IncidentPayload {
-  incident_id: string;
-  title: string;
-  severity: IncidentSeverity;
-  status: IncidentStatus;
-  affected_services: string[];
+export interface AIProbeOutcome {
+  actions: string[];
+  unique_failed: number;
+  unique_succeeded: number;
+  peak_db_connections: number;
+  actions_executed: number;
+  horizon_ticks: number;
 }
 
-export interface ProposalPayload {
-  proposal_id: string;
-  agent: string;
-  action: string;
-  target_service: string;
-  expected_effect: string;
-  risk: ProposalRisk;
-  confidence: number;
-  ttl_ticks: number;
+export interface AICheckResult {
+  description: string;
+  metric: string;
+  comparator: string;
+  threshold: number;
+  within_ticks: number;
+  decided_tick: number;
+  status: 'pending' | 'pass' | 'fail';
+  observed: number | null;
+  evaluated_tick: number | null;
 }
 
-export interface DecisionPayload {
+// ── Aggregates ───────────────────────────────────────────────────────────────
+
+/** Aggregate project status from GET /v1/admin/status. */
+export interface AdminStatus {
+  backend: { state: string; runs_stored: number };
+  runs: {
+    total: number;
+    by_state: Record<string, number>;
+    by_policy: Record<string, number>;
+    newest_run_id: string | null;
+  };
+  transactions: {
+    offered: number; failed: number; succeeded: number; actions: number;
+  };
+  ai_engine: {
+    model: string;
+    provider_configured: boolean;
+    live_decisions: number;
+    fallback_decisions: number;
+    top_fallback_reasons: Record<string, number>;
+  };
+  scenarios: Record<string, { actions_available: string[] }>;
+}
+
+/** Local what-if replay of a candidate plan against the recorded seed. */
+export interface BacktestResult {
   plan_id: string;
-  decision: 'approved' | 'rejected' | 'delayed';
-  reasons: string[];
-  selected_plan_id?: string;
+  run_id: string;
+  seed: number;
+  actions: string[];
+  arms: BacktestArm[];
+  baseline_failed: number;
+  plan_failed: number;
+  delta_failed: number;
+  verdict: 'better' | 'worse' | 'equal';
+  simulated: boolean;
+  measured: boolean;
 }
 
-export interface ExecutionPayload {
-  plan_id: string;
-  action: string;
-  step_index: number;
-  step_status: 'pending' | 'running' | 'completed' | 'failed';
-  log_line?: string;
-}
-
-export interface VerificationPayload {
-  plan_id: string;
-  predicted_risk: number;
-  actual_error_rate_pct: number;
-  actual_db_pressure_pct: number;
-  outcome: 'improved' | 'neutral' | 'regressed';
-  delta_failed_txns: number;
-}
-
-// ── Extended types (gap-filling for frontend, pending backend contract) ───────
-
-/** G-10: Gemma hypothesis — pending backend schema confirmation */
-export interface GemmaHypothesis {
-  hypothesis_id: string;
-  statement: string;
-  evidence: string[];
-  confidence: number; // 0–1
-  source: 'gemma' | 'heuristic';
-  /** Must display prominently — not a fact */
-  is_verified: false;
+export interface BacktestArm {
+  actions: string[];
+  unique_failed: number;
+  unique_succeeded: number;
+  peak_db_connections: number;
+  max_queue_depth: number;
+  sustained_recovery_time: number;
+  actions_executed: number;
+  horizon_ticks: number;
 }
 
 /**
- * G-01: Incident record — pending GET /v1/runs/{id}/incidents
- *
- * severity/status/started_at/affected_services are optional because the UI
- * routes by `incidents/{id}` and there is no /v1/incidents endpoint in the
- * contract: in live mode the route param is used as the run id and this record
- * is derived from GET /v1/runs/{run_id}. Only the id/run_id/title are known
- * then; the remaining header fields are filled in by the first streamed
- * `incident` SSE event. Mock data always supplies every field.
+ * Incident record derived from a run. The contract has no /v1/incidents
+ * resource: the UI routes by `incidents/{id}` with the route param used as
+ * the run id, so only id/run_id/title are known up front; the optional
+ * header fields are filled in by the first streamed `incident` SSE event.
  */
 export interface Incident {
   id: string;
@@ -215,77 +278,4 @@ export interface Incident {
   status?: IncidentStatus;
   started_at?: string;
   affected_services?: string[];
-  hypotheses?: GemmaHypothesis[];
-  timeline?: CascadeEvent[];
-}
-
-/** G-04: Audit record — pending GET /v1/audit */
-export interface AuditRecord {
-  event_id: string;
-  run_id: string;
-  tick: number;
-  kind: EventKind;
-  agent?: string;
-  action?: string;
-  decision?: string;
-  trace_id?: string;
-  timestamp?: string;
-  payload: EventPayload;
-}
-
-/** G-06: Execution step — pending GET /v1/runs/{id}/execution */
-export interface ExecutionStep {
-  step_index: number;
-  action: string;
-  status: 'pending' | 'running' | 'completed' | 'failed';
-  started_at?: string;
-  completed_at?: string;
-  log_lines: string[];
-  checkpoint_passed?: boolean;
-}
-
-/** G-07: Multi-run experiment summary — pending contract */
-export interface ExperimentSummary {
-  experiment_id: string;
-  seed: number;
-  scenario: RunScenario;
-  arms: ExperimentArm[];
-}
-
-export interface ExperimentArm {
-  policy: RunPolicy;
-  run_id: string;
-  state: RunState;
-  unique_failed_txns: number;
-  unique_success_txns: number;
-  latency_p95_ms: number;
-  recovery_time_ticks: number;
-  peak_db_pressure_pct: number;
-  actions_executed: number;
-  safety_violations: number;
-  simulated: boolean;
-  ci_lower?: number;
-  ci_upper?: number;
-  metrics_by_tick?: TickMetric[];
-}
-
-export interface TickMetric {
-  tick: number;
-  error_rate_pct: number;
-  db_pressure_pct: number;
-  throughput_rps: number;
-}
-
-/** Agent proposal (UI model, composed from SSE ProposalPayload + display data) */
-export interface AgentProposal {
-  proposal_id: string;
-  agent: string;
-  action: string;
-  action_label: string;
-  target_service: string;
-  expected_effect: string;
-  risk: ProposalRisk;
-  confidence: number;
-  ttl_ticks: number;
-  status?: 'pending' | 'approved' | 'rejected' | 'expired';
 }

@@ -1,7 +1,7 @@
 /**
- * API transport selector.
- * Set NEXT_PUBLIC_API_MODE=live to switch to the real backend.
- * Default is 'mock' so the frontend works without any backend.
+ * API transport: the live sandbox backend, reached same-origin through the
+ * Next rewrite proxy (see live-transport.ts). There is no mock mode; the
+ * pages show an honest empty state when the backend is not running.
  */
 import { liveTransport } from './live-transport';
 
