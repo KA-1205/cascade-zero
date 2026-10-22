@@ -64,12 +64,12 @@ paths:
       security: [{bearerAuth: []}]
   /v1/plans/{plan_id}/approval:
     post:
-      operationId: approvePlan
-      description: Sandbox only; requires authenticated operator and idempotency key.
+      operationId: decidePlan
+      description: Approve for sandbox replay or reject a candidate; requires authenticated operator and idempotency key.
       parameters: [{name: plan_id, in: path, required: true, schema: {type: string}}, {name: Idempotency-Key, in: header, required: true, schema: {type: string}}]
       requestBody: {required: true, content: {application/json: {schema: {type: object, required: [approved], properties: {approved: {type: boolean}, reason: {type: string}}}}}}
       responses:
-        '202': {description: Accepted for sandbox execution}
+        '202': {description: Operator decision recorded}
         '403': {description: Forbidden}
         '409': {description: Invalid transition or replay}
       security: [{bearerAuth: []}]
@@ -84,6 +84,7 @@ components:
         seed: {type: integer, minimum: 0}
         scenario: {type: string, enum: [db_slowdown, payments_degradation, traffic_surge]}
         policy: {type: string, enum: [none, independent, guardrails, coordinated, ai_coordinated]}
+        purpose: {type: string, enum: [policy_comparison, operator_review], default: policy_comparison}
     Run:
       type: object
       required: [id, seed, scenario, policy, state, simulated]
@@ -94,6 +95,7 @@ components:
         policy: {type: string}
         state: {type: string, enum: [created, running, completed, failed, cancelled]}
         simulated: {type: boolean}
+        purpose: {type: string, enum: [policy_comparison, operator_review]}
         created_at: {type: string}
         event_count: {type: integer}
         plan_count: {type: integer}

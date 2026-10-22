@@ -360,7 +360,8 @@ def _percentile(values: list[int], fraction: float) -> int | None:
     return ordered[max(0, int(len(ordered) * fraction + 0.999999) - 1)]
 
 
-def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=None) -> dict:
+def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=None,
+             apply_actions: bool = True) -> dict:
     """Return immutable-by-convention result with trace, hash and unique-user metrics."""
     if seed < 0:
         raise ValueError("seed must be non-negative")
@@ -391,12 +392,14 @@ def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=N
             extra = getattr(decision, "extra", None) or {}
             _emit(run, "decision", {"actions": selected, "predicted_risk": decision.predicted_risk,
                                     "reasons": decision.reasons, "simulated": True, **extra})
-            for proposal in proposals:
-                if proposal["action"] in selected:
-                    _apply(run, proposal)
+            if apply_actions:
+                for proposal in proposals:
+                    if proposal["action"] in selected:
+                        _apply(run, proposal)
         else:
-            for proposal in _proposals(policy, state, cfg["actions"]):
-                _apply(run, proposal)
+            if apply_actions:
+                for proposal in _proposals(policy, state, cfg["actions"]):
+                    _apply(run, proposal)
         if tick in (fault["start"], fault["end"] + 1, fault["recovery_end"] + 1):
             _emit(run, "incident", {"phase": ("degraded" if tick == fault["start"] else
                                                 "partial" if tick == fault["end"] + 1 else "restored")})

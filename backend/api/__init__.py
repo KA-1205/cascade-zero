@@ -22,7 +22,6 @@ from uuid import uuid4
 from backend.ai import AIPlanner, GeminiClient
 from backend.ai.planner import counterfactual
 from backend.coordinator import default_coordinator
-from backend.integrations.n8n import executor_from_env
 from backend.simulator import DEFAULT_CONFIG, SCENARIOS, scenario_overlay, simulate
 
 
@@ -51,7 +50,9 @@ def _valid_run_request(body: object) -> bool:
     return (isinstance(body, dict) and type(body.get("seed")) is int
             and body["seed"] >= 0 and body.get("scenario") in SCENARIOS
             and body.get("policy") in ("none", "independent", "guardrails",
-                                       "coordinated", "ai_coordinated"))
+                                       "coordinated", "ai_coordinated")
+            and body.get("purpose", "policy_comparison") in
+            ("policy_comparison", "operator_review"))
 
 
 def load_dotenv() -> None:
@@ -141,7 +142,8 @@ def _plan_callable(policy: str, seed: int, overlay: dict):
 def _execute_run(stored: dict, run: dict, request: dict, overlay: dict) -> None:
     try:
         plan = _plan_callable(request["policy"], request["seed"], overlay)
-        result = simulate(request["seed"], request["policy"], overlay, plan=plan)
+        result = simulate(request["seed"], request["policy"], overlay, plan=plan,
+                          apply_actions=request.get("purpose") != "operator_review")
         run["metrics"] = {key: value for key, value in result["metrics"].items()
                           if isinstance(value, (int, float)) and not isinstance(value, bool)}
         run["trace_hash"] = result["trace_hash"]
@@ -154,7 +156,8 @@ def _execute_run(stored: dict, run: dict, request: dict, overlay: dict) -> None:
                 plan_record = {"id": f"{run['id']}:plan:{index:06d}", "run_id": run["id"],
                                "actions": decision["actions"], "predicted_risk": decision["predicted_risk"],
                                "reasons": decision["reasons"], "status": "candidate",
-                               "simulated": True, "measured": False}
+                               "simulated": True, "measured": False,
+                               "purpose": request.get("purpose", "policy_comparison")}
                 if "ai" in decision:
                     plan_record["ai"] = decision["ai"]
             with _lock:
@@ -264,6 +267,7 @@ class Handler(BaseHTTPRequestHandler):
         run_id = str(uuid4())
         run = {"id": run_id, "seed": request["seed"], "scenario": request["scenario"],
                "policy": request["policy"], "state": "created", "simulated": True,
+               "purpose": request.get("purpose", "policy_comparison"),
                "measured": False,
                "created_at": datetime.now(timezone.utc).isoformat(timespec="microseconds")}
         overlay = scenario_overlay(request["scenario"])
@@ -297,9 +301,9 @@ class Handler(BaseHTTPRequestHandler):
             body = self._body()
         except (ValueError, UnicodeDecodeError):
             return self._send(400, {"error": "invalid JSON body"})
-        if not isinstance(body, dict) or body.get("approved") is not True or (
+        if not isinstance(body, dict) or type(body.get("approved")) is not bool or (
                 "reason" in body and not isinstance(body["reason"], str)):
-            return self._send(400, {"error": "approved must be true"})
+            return self._send(400, {"error": "approved must be a boolean"})
         with _lock:
             entry = _plans.get(plan_id)
             if (plan_id, key) in _approval_keys or entry is None:
@@ -307,10 +311,14 @@ class Handler(BaseHTTPRequestHandler):
             stored, plan, index = entry
             if plan["status"] != "candidate":
                 return self._send(409)
-            # Claim the plan so a concurrent approval cannot also verify and
-            # execute; any verification failure below releases the claim.
+            if body["approved"] is False:
+                plan["status"] = "rejected"
+                plan["operator_reason"] = body.get("reason", "")
+                _approval_keys.add((plan_id, key))
+                return self._send(202)
+            # Claim the plan so concurrent decisions cannot replay it twice;
+            # a verification or replay failure below releases the claim.
             plan["status"] = "delayed"
-            policy = stored["run"]["policy"]
             seed = stored["run"]["seed"]
             overlay = stored.get("overlay") or None
 
@@ -319,71 +327,35 @@ class Handler(BaseHTTPRequestHandler):
                 if plan["status"] == "delayed":
                     plan["status"] = "candidate"
 
-        try:
-            if policy == "ai_coordinated":
-                # A live model is not reproducible, so verify the plan
-                # against the recorded decision event instead of replaying.
-                with _lock:
-                    events = list(stored["events"])
-                event = events[index] if 0 <= index < len(events) else None
-                payload = (event or {}).get("payload") or {}
-                verified = (event is not None and event["kind"] == "decision"
-                            and payload.get("actions") == plan["actions"]
-                            and payload.get("predicted_risk") == plan["predicted_risk"]
-                            and payload.get("reasons") == plan["reasons"])
-            else:
-                # The replay runs OUTSIDE the lock: re-verifying one plan must
-                # not block SSE reads and run creation for a whole simulation.
-                result = simulate(seed, "coordinated", overlay,
-                                  plan=default_coordinator().plan)
-                decision = next((event for event in result["events"]
-                                 if event["event_id"].endswith(f":{index:06d}")), None)
-                payload = (decision or {}).get("payload") or {}
-                verified = (decision is not None and decision["kind"] == "decision"
-                            and payload.get("actions") == plan["actions"]
-                            and payload.get("predicted_risk") == plan["predicted_risk"]
-                            and payload.get("reasons") == plan["reasons"])
-        except (ValueError, NotImplementedError, StopIteration, IndexError):
-            release_claim()
-            return self._send(409)
+        with _lock:
+            events = list(stored["events"])
+        event = events[index] if 0 <= index < len(events) else None
+        payload = (event or {}).get("payload") or {}
+        verified = (event is not None and event["kind"] == "decision"
+                    and payload.get("actions") == plan["actions"]
+                    and payload.get("predicted_risk") == plan["predicted_risk"]
+                    and payload.get("reasons") == plan["reasons"])
         if not verified:
             release_claim()
             return self._send(409)
 
-        # Execution is opt-in and runs outside the lock. In the default
-        # sandbox nothing is sent: the actions already executed inside the
-        # deterministic simulation, so approval is recorded honestly as
-        # "approved". With a gated n8n webhook configured, it executes now.
-        record = None
-        if plan["actions"]:
-            try:
-                record = executor_from_env().execute(plan_id, key, plan["actions"])
-            except ValueError:
-                release_claim()
-                return self._send(409, {"error": "actions are not executable"})
+        # All runs in this build are synthetic. Approval records a local replay
+        # and never invokes a webhook or touches an external service.
+        approval_result = None
+        try:
+            approval_result = counterfactual(seed, overlay or {}, plan["actions"], 70)
+        except (ValueError, NotImplementedError):
+            release_claim()
+            return self._send(409, {"error": "sandbox replay could not be completed"})
 
         with _lock:
             entry = _plans.get(plan_id)
             if entry is None or entry[1] is not plan or plan["status"] != "delayed":
                 return self._send(409)
-            if record is None or record.status == "dry-run":
-                plan["status"] = "approved"
-            elif record.status == "sent":
-                plan["status"] = "executed"
-                plan["execution"] = {"status": record.status,
-                                     "simulated": record.simulated,
-                                     "measured": record.measured,
-                                     "replayed": record.replayed,
-                                     "error": record.error}
-            else:
-                # 'unknown': the webhook may have received the POST; the plan
-                # stays 'delayed' for operator review and is never auto-retried.
-                plan["status"] = "delayed"
-                plan["execution"] = {"status": record.status,
-                                     "simulated": record.simulated,
-                                     "measured": record.measured,
-                                     "replayed": record.replayed,
-                                     "error": record.error}
+            plan["status"] = "approved"
+            plan["execution"] = {"status": "dry-run", "simulated": True,
+                                  "measured": False, "replayed": True,
+                                  "error": None, "outcome": approval_result}
             _approval_keys.add((plan_id, key))
         return self._send(202)
 
@@ -395,7 +367,7 @@ class Handler(BaseHTTPRequestHandler):
 
         Nothing live is touched: the same deterministic simulator that produced
         the incident replays it with the plan's actions applied, plus a no-action
-        baseline and each action alone, and reports the measured outcome.
+        baseline and each action alone, and reports simulated outcomes.
         """
         if not self._authorize():
             return self._send(403)
