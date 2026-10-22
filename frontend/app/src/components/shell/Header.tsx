@@ -124,14 +124,14 @@ export function Header({ onMenuToggle }: HeaderProps) {
             WebkitTextFillColor: 'transparent',
           }}
         >
-          live run
+          synthetic run
         </span>
       </div>
 
       {/* Spacer */}
       <div style={{ flex: 1 }} />
 
-      {/* Live API status — reflects a real health probe, not a static dot */}
+      {/* This is the local simulator connection, not a production system. */}
       <div
         style={{
           display: 'flex',
@@ -140,7 +140,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
           fontSize: 12,
           color: 'var(--text-secondary)',
         }}
-        title="Live backend connection"
+        title="Connection to the local simulation API"
       >
         <span
           className="live-dot"
@@ -151,7 +151,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
             animation: apiLive ? undefined : 'none',
           }}
         />
-        <span>{apiLive ? 'Live API' : 'API offline'}</span>
+        <span>{apiLive ? 'Simulator connected' : 'Simulator offline'}</span>
       </div>
 
       <div style={{ width: 1, height: 20, backgroundColor: 'var(--border)' }} />
@@ -170,7 +170,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
           textTransform: 'uppercase',
         }}
       >
-        AI Recovery Engine
+        Simulation mode
       </div>
 
       {/* Clock */}

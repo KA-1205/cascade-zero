@@ -132,7 +132,7 @@ export const liveTransport = {
    * The Next server route supplies the sandbox bearer token from its private
    * environment. It never enters the browser bundle.
    */
-  async approvePlan(planId: string, approved: boolean, reason?: string): Promise<void> {
+  async decidePlan(planId: string, approved: boolean, reason?: string): Promise<void> {
     const key = crypto.randomUUID();
     await apiFetch<void>(`/api/approval/${encodeURIComponent(planId)}`, {
       method: 'POST',

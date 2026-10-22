@@ -44,6 +44,7 @@ export interface Run {
   policy: RunPolicy;
   state: RunState;
   simulated: boolean;
+  purpose?: 'policy_comparison' | 'operator_review';
   metrics?: RunMetrics;
   /** ISO 8601 wall-clock start */
   created_at?: string;
@@ -59,15 +60,17 @@ export interface RunRequest {
   seed: number;
   scenario: RunScenario;
   policy: RunPolicy;
+  purpose?: 'policy_comparison' | 'operator_review';
 }
 
-/** Provenance of a gated n8n execution, attached at approval time. */
+/** Provenance of an operator-approved synthetic replay. */
 export interface PlanExecution {
   status: 'sent' | 'unknown' | 'dry-run';
   simulated: boolean;
   measured: boolean;
   replayed: boolean;
   error: string | null;
+  outcome?: Partial<BacktestArm>;
 }
 
 export interface Plan {
@@ -77,11 +80,13 @@ export interface Plan {
   predicted_risk: number;
   status: PlanStatus;
   simulated: boolean;
+  purpose?: 'policy_comparison' | 'operator_review';
   reasons: string[];
   /** AI-loop provenance on ai_coordinated plans. */
   ai?: AIDecisionInfo;
-  /** Present when a gated webhook execution was attempted at approval. */
+  /** Present after an operator approves a local sandbox replay. */
   execution?: PlanExecution;
+  backtest?: BacktestResult;
 }
 
 // ── SSE Events — discriminated by kind so payloads narrow without casts ──────

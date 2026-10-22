@@ -43,7 +43,7 @@ function mergeEvents(prior: CascadeEvent[], tail: CascadeEvent[]): CascadeEvent[
   return merged;
 }
 
-export function BackendDemo({ view, runId }: { view: View; runId?: string }) {
+export function BackendDemo({ view, runId, planId }: { view: View; runId?: string; planId?: string }) {
   const [run, setRun] = useState<Run | null>(null);
   const [topology, setTopology] = useState<Topology | null>(null);
   const [events, setEvents] = useState<CascadeEvent[]>([]);
@@ -138,7 +138,8 @@ export function BackendDemo({ view, runId }: { view: View; runId?: string }) {
 
   const decisions = events.filter((event): event is DecisionEvent => event.kind === 'decision');
   const executions = events.filter((event): event is ExecutionEvent => event.kind === 'execution');
-  const visiblePlans = plans.filter((plan) => plan.actions.length).slice(0, 12);
+  const candidatePlans = plans.filter((plan) => plan.actions.length);
+  const visiblePlans = candidatePlans.slice(0, 12);
   const aiDecisions = useMemo(() =>
     decisions.filter((event) => {
       const info = event.payload.ai;
@@ -161,7 +162,7 @@ export function BackendDemo({ view, runId }: { view: View; runId?: string }) {
   const explanation = {
     overview: 'The newest run from the backend. Every number on this page was computed for that incident.',
     incident: 'The backend replays the incident. Every row below comes from its event stream.',
-    plans: 'The AI records candidate actions with its diagnosis and predicted risk. Approval verifies the plan against the recorded trace.',
+    plans: 'Synthetic telemetry feeds the diagnosis. Every plan waits for your decision: approve a sandbox replay, test it in the Experiment Lab, or reject it.',
     experiments: 'Run all five policies against the same seed and compare unique failed transactions.',
     audit: 'The event log exposes telemetry, AI decisions with provenance, and action records.',
   }[view];
@@ -169,7 +170,7 @@ export function BackendDemo({ view, runId }: { view: View; runId?: string }) {
   async function restart() {
     setBusy(true); setError('');
     try {
-      const created = await api.createRun({ seed, scenario, policy });
+      const created = await api.createRun({ seed, scenario, policy, purpose: 'operator_review' });
       localStorage.setItem(KEY, created.id);
       window.dispatchEvent(new Event('cascade-run-changed'));
       // Keep run-scoped URLs in sync without navigating anywhere.
@@ -186,10 +187,20 @@ export function BackendDemo({ view, runId }: { view: View; runId?: string }) {
   async function approve(plan: Plan) {
     setBusy(true); setError('');
     try {
-      await api.approvePlan(plan.id, true);
+      await api.decidePlan(plan.id, true, 'Operator approved synthetic sandbox replay');
       setPlans(await api.listPlans(plan.run_id));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Approval failed');
+    } finally { setBusy(false); }
+  }
+
+  async function reject(plan: Plan) {
+    setBusy(true); setError('');
+    try {
+      await api.decidePlan(plan.id, false, 'Operator rejected plan');
+      setPlans(await api.listPlans(plan.run_id));
+    } catch (reason) {
+      setError(reason instanceof Error ? reason.message : 'Could not reject plan');
     } finally { setBusy(false); }
   }
 
@@ -198,6 +209,7 @@ export function BackendDemo({ view, runId }: { view: View; runId?: string }) {
     try {
       const result = await api.backtestPlan(plan.id);
       setBacktests((prior) => ({ ...prior, [plan.id]: result }));
+      setPlans(await api.listPlans(plan.run_id));
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Backtest failed');
     } finally { setBacktesting(null); }
@@ -209,7 +221,7 @@ export function BackendDemo({ view, runId }: { view: View; runId?: string }) {
       // All five arms run concurrently against the threaded sandbox server;
       // each AI arm still waits for its own background run to finish.
       const results = await Promise.all(POLICIES.map(async (arm) => {
-        const created = await api.createRun({ seed, scenario, policy: arm });
+        const created = await api.createRun({ seed, scenario, policy: arm, purpose: 'policy_comparison' });
         return created.state === 'running' ? await waitUntilDone(created.id) : created;
       }));
       setComparison(results);
@@ -310,10 +322,10 @@ export function BackendDemo({ view, runId }: { view: View; runId?: string }) {
             <section style={card}>
               <SectionHeader index="01" title="How this dashboard works" />
               <ol style={{ ...muted, paddingLeft: 20, display: 'grid', gap: 6 }}>
-                <li><strong style={{ color: 'var(--text-primary)' }}>Start a run</strong> from the <Link href="/incidents">Incidents tab</Link>. Pick <em>what breaks</em> (scenario), <em>who decides how to fix it</em> (policy) and a seed. The same seed replays the same incident; a random seed gives you a fresh one.</li>
-                <li><strong style={{ color: 'var(--text-primary)' }}>The incident unfolds.</strong> Services degrade, telemetry moves, recovery agents propose actions from what they can see. This page always shows the newest run.</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Generate an incident</strong> from the <Link href="/incidents">Incidents tab</Link>. Choose one of three scenarios and a seed; each seed produces reproducible synthetic telemetry.</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Review the diagnosis.</strong> The AI planner can suggest recovery actions, but operator review runs hold those actions until you decide.</li>
                 <li><strong style={{ color: 'var(--text-primary)' }}>The policy decides.</strong> {POLICY_BLURB[policy]}</li>
-                <li><strong style={{ color: 'var(--text-primary)' }}>Judge it by outcomes.</strong> Every number below is computed by the backend for this run. Open <Link href={'/incidents/' + run.id}>the incident</Link> for the telemetry chart, or <Link href={'/plans/' + run.id}>Recovery Plans</Link> to backtest a plan before approving it.</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Choose what happens next.</strong> Open <Link href={'/plans/' + run.id}>Recovery Plans</Link> to approve a sandbox replay, test a plan in the Experiment Lab, or reject it.</li>
               </ol>
             </section>
           )}
@@ -343,14 +355,14 @@ export function BackendDemo({ view, runId }: { view: View; runId?: string }) {
               )}
               {aiDecisions.length > 0 && (
                 <section style={card}>
-                  <SectionHeader index={numbering.ai} title="AI evaluations" subtitle="Each card says whether the live model made the call or the rule fallback did." />
+                  <SectionHeader index={numbering.ai} title="AI evaluations" subtitle="Each card shows whether a configured model or the deterministic fallback made the recommendation." />
                   {aiDecisions.slice(0, 4).reverse().map((event) => {
                     const info = event.payload.ai!;
                     return (
                       <div key={event.event_id} style={{ borderTop: '1px solid var(--border)', padding: '14px 0' }}>
                         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
                           <strong style={{ ...chip, background: info.live ? 'var(--accent)' : 'var(--text-muted)', color: '#fff' }}>
-                            {info.live ? `LIVE AI · ${info.model}` : 'RULE FALLBACK'}
+                            {info.live ? `MODEL · ${info.model}` : 'RULE FALLBACK'}
                           </strong>
                           {info.diagnosis && (
                             <span style={{ ...chip, color: SEVERITY_COLOR[info.diagnosis.severity] ?? 'var(--text-secondary)', border: `1px solid ${SEVERITY_COLOR[info.diagnosis.severity] ?? 'var(--border)'}` }}>
@@ -407,7 +419,7 @@ export function BackendDemo({ view, runId }: { view: View; runId?: string }) {
                       : 'the shared database degraded from tick 10 to 35';
                   const decider = run.policy === 'ai_coordinated'
                     ? (liveOnes > 0
-                        ? `Gemma diagnosed and decided at ${liveOnes} point${liveOnes === 1 ? '' : 's'} (${aiEntries.length - liveOnes} fell back to rules)`
+                        ? `AI planner used the model at ${liveOnes} point${liveOnes === 1 ? '' : 's'} (${aiEntries.length - liveOnes} used the fallback)`
                         : `the model was unreachable, so the rule fallback decided all ${aiEntries.length || 0} time${aiEntries.length === 1 ? '' : 's'}`)
                     : `${POLICY_LABEL[run.policy]} decided with deterministic rules`;
                   return `Seed ${run.seed}: ${faultText}. Recovery agents proposed actions from observable telemetry; ${decider}. ` +
@@ -463,35 +475,57 @@ export function BackendDemo({ view, runId }: { view: View; runId?: string }) {
             </>
           )}
           {view === 'plans' && <section style={card}>
-            <SectionHeader index="01" title="Candidate plans" subtitle="Approve a plan directly, or backtest it first: the backend replays the incident locally with the plan applied and tells you whether it helped. Nothing live is touched." />
-            <p style={muted}>Every plan below came out of this run. <strong>Backtest</strong> shows the measured effect before you commit; <strong>Approve directly</strong> skips straight to execution.</p>
+            <SectionHeader index="01" title="Operator review" subtitle="The run used synthetic telemetry to diagnose the incident and propose recovery actions. No action has been applied." />
+            <div style={{ ...card, margin: '12px 0 18px', background: 'var(--accent-gradient-soft)' }}>
+              <strong>Choose the next step</strong>
+              <p style={{ ...muted, marginTop: 4 }}>Approve a plan for a local replay, send it to the Experiment Lab for a what-if comparison, or reject it. Every outcome is labeled simulated; there is no live server connection.</p>
+            </div>
             {visiblePlans.map((plan) => {
               const info = plan.ai;
-              const result = backtests[plan.id];
+              const result = backtests[plan.id] ?? plan.backtest;
               return <div key={plan.id} style={{ borderTop: '1px solid var(--border)', padding: '14px 0' }}>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 260 }}>
                     <strong>{plan.actions.join(' + ')}</strong>
                     {info?.diagnosis && <div style={muted}>diagnosis: {info.diagnosis.cause} ({info.diagnosis.severity})</div>}
-                    <div style={muted}>Risk estimate {plan.predicted_risk} · {plan.reasons.join('; ')} · {plan.status}</div>
+                    <div style={muted}>Risk estimate {plan.predicted_risk} · {plan.reasons.join('; ')}</div>
+                    <span style={{ ...chip, color: plan.status === 'candidate' ? 'var(--warning)' : 'var(--success)', border: '1px solid currentColor', marginTop: 8 }}>{plan.status.toUpperCase()}</span>
                   </div>
                   {plan.status === 'candidate' && <>
-                    <button type="button" disabled={busy || backtesting === plan.id} onClick={() => backtest(plan)} style={ghost}>
-                      {backtesting === plan.id ? 'Backtesting…' : result ? 'Backtest again' : 'Backtest'}
-                    </button>
-                    <button type="button" disabled={busy} onClick={() => approve(plan)} style={action}>Approve directly</button>
+                    <Link href={`/experiments?run=${encodeURIComponent(run.id)}&plan=${encodeURIComponent(plan.id)}`} style={{ ...ghost, textDecoration: 'none' }}>Send to Experiment Lab</Link>
+                    <button type="button" disabled={busy} onClick={() => approve(plan)} style={action}>Approve plan</button>
+                    <button type="button" disabled={busy} onClick={() => reject(plan)} style={{ ...ghost, color: 'var(--danger)', borderColor: 'var(--danger)' }}>Reject</button>
                   </>}
                 </div>
-                {result && <BacktestVerdict result={result} />}
+                {result && <><BacktestVerdict result={result} /><p style={{ ...muted, marginTop: 8 }}>Synthetic replay only. It does not predict production with certainty.</p></>}
+                {plan.execution?.outcome && <p style={{ ...muted, marginTop: 8 }}>Approved sandbox replay: {number(plan.execution.outcome.unique_failed)} failed · {number(plan.execution.outcome.unique_succeeded)} succeeded · synthetic result.</p>}
               </div>;
             })}
-            {!visiblePlans.length && <p style={muted}>No candidate with an action was generated. Start an AI or coordinator run first.</p>}
+            {!visiblePlans.length && <p style={muted}>No action plan was generated for this run. Choose an AI-coordinated or coordinated policy to generate operator review candidates.</p>}
           </section>}
           {view === 'experiments' && <section style={card}>
-            <SectionHeader index="01" title="The Experiment Lab" subtitle="Check a plan here before it counts." />
-                    <ul style={{ ...muted, paddingLeft: 20, display: 'grid', gap: 6, marginBottom: 16 }}>
-              <li><strong style={{ color: 'var(--text-primary)' }}>Backtest one plan.</strong> On any candidate plan (<Link href={'/plans/' + run.id}>Recovery Plans</Link>) press <em>Backtest</em>: the incident replays locally with that plan applied, and you see whether it helps or hurts, and by how much.</li>
-              <li><strong style={{ color: 'var(--text-primary)' }}>Compare policies.</strong> Run the same incident under all five policies and see which fails fewest transactions. Lower is better.</li>
+            <SectionHeader index="01" title="The Experiment Lab" subtitle="Replay one candidate against the same synthetic incident before deciding whether to approve it." />
+            {(() => {
+              const labPlan = candidatePlans.find((candidate) => candidate.id === planId) ?? candidatePlans[0];
+              if (!labPlan) return <p style={muted}>No candidate actions in this run. Start an AI planner or coordinator incident first.</p>;
+              const result = backtests[labPlan.id] ?? labPlan.backtest;
+              return <div style={{ ...card, margin: '12px 0 18px', borderColor: 'var(--accent)' }}>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                  <div style={{ flex: 1, minWidth: 220 }}>
+                    <strong>{labPlan.actions.join(' + ')}</strong>
+                    <p style={muted}>Run {run.id.slice(0, 8)} · predicted risk {labPlan.predicted_risk} · {labPlan.reasons.join('; ')}</p>
+                  </div>
+                  <button type="button" disabled={busy || backtesting === labPlan.id} onClick={() => backtest(labPlan)} style={action}>
+                    {backtesting === labPlan.id ? 'Running replay…' : result ? 'Replay again' : 'Run synthetic replay'}
+                  </button>
+                  <Link href={`/plans/${run.id}`} style={{ color: 'var(--accent)', fontWeight: 600 }}>Return to operator review →</Link>
+                </div>
+                {result && <><BacktestVerdict result={result} /><p style={{ ...muted, marginTop: 8 }}>This deterministic replay uses generated telemetry. Treat it as an experiment result, not a production guarantee.</p></>}
+              </div>;
+            })()}
+            <ul style={{ ...muted, paddingLeft: 20, display: 'grid', gap: 6, marginBottom: 16 }}>
+              <li><strong style={{ color: 'var(--text-primary)' }}>Plan replay.</strong> A no-action baseline is compared with the chosen action combination, including failures, successes, queues, database connections, and recovery timing.</li>
+              <li><strong style={{ color: 'var(--text-primary)' }}>Compare policies.</strong> Run the same incident under all five policies and compare outcomes. One seed is a demonstration, not a statistical result.</li>
             </ul>
             <button type="button" disabled={busy} onClick={compare} style={action}>{busy ? 'Running…' : 'Run comparison on this seed'}</button>
             {comparison.length > 0 && <div style={{ overflowX: 'auto', marginTop: 18 }}>
@@ -528,10 +562,10 @@ function BacktestVerdict({ result }: { result: BacktestResult }) {
     <div style={{ marginTop: 10, padding: 12, border: `1px solid ${color}`, borderRadius: 8 }}>
       <div style={{ display: 'flex', gap: 10, alignItems: 'baseline', flexWrap: 'wrap' }}>
         <strong style={{ ...chip, color, border: `1px solid ${color}` }}>
-          BACKTEST: {result.verdict.toUpperCase()}
+          LAB REPLAY: {result.verdict.toUpperCase()}
         </strong>
         <span style={{ color, fontWeight: 700 }}>
-          {delta === 0 ? 'no measurable change' : `${delta > 0 ? '+' : ''}${delta.toLocaleString()} failed transactions vs doing nothing`}
+          {delta === 0 ? 'same failed transaction count' : `${delta > 0 ? '+' : ''}${delta.toLocaleString()} failed transactions vs doing nothing`}
         </span>
         <span style={muted}>
           {result.plan_failed.toLocaleString()} failed with the plan vs {result.baseline_failed.toLocaleString()} with no action · seed {result.seed} · {result.arms[0].horizon_ticks} ticks

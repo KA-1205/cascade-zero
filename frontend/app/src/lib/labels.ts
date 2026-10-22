@@ -9,7 +9,7 @@ export const POLICY_LABEL: Record<RunPolicy, string> = {
   independent: 'Independent agents',
   guardrails: 'Rule guardrails',
   coordinated: 'Rule coordinator',
-  ai_coordinated: 'AI (Gemma)',
+  ai_coordinated: 'AI planner',
 };
 
 export const POLICY_BLURB: Record<RunPolicy, string> = {
@@ -17,7 +17,7 @@ export const POLICY_BLURB: Record<RunPolicy, string> = {
   independent: 'Each recovery agent fires on its own trigger, no coordination.',
   guardrails: 'Agents act, but simple caps and cooldowns limit the damage.',
   coordinated: 'A deterministic risk engine picks the safest action subset.',
-  ai_coordinated: 'Gemma diagnoses the incident and decides; rules take over only if the model is unreachable.',
+  ai_coordinated: 'The AI planner diagnoses synthetic telemetry and selects from guarded actions. A deterministic fallback is used if the model is unavailable.',
 };
 
 export const SCENARIOS: RunScenario[] = [

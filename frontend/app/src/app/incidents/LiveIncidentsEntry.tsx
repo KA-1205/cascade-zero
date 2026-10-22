@@ -49,7 +49,7 @@ export function LiveIncidentsEntry() {
   async function startRun() {
     setBusy(true); setError(null);
     try {
-      const created = await api.createRun({ seed, scenario, policy });
+      const created = await api.createRun({ seed, scenario, policy, purpose: 'operator_review' });
       localStorage.setItem('cascade-demo-run-id', created.id);
       router.push(`/incidents/${created.id}`);
     } catch (err) {
@@ -70,8 +70,8 @@ export function LiveIncidentsEntry() {
     <div style={{ maxWidth: 1100, display: 'grid', gap: 18 }}>
       <section className="surface" style={{ padding: 20, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 240 }}>
-          <strong>Start the next incident</strong>
-          <div style={muted}>A random seed gives you a fresh incident every time; the same seed replays the same one.</div>
+          <strong>Simulate an incident</strong>
+          <div style={muted}>Synthetic telemetry creates a repeatable scenario. The policy diagnoses the incident and proposes actions; you decide what happens next.</div>
         </div>
         <label style={muted}>Seed
           <input type="number" min="0" value={seed}
@@ -89,7 +89,7 @@ export function LiveIncidentsEntry() {
           </select>
         </label>
         <button type="button" onClick={startRun} disabled={busy} style={button}>
-          {busy ? 'Starting…' : 'Start run'}
+          {busy ? 'Generating telemetry…' : 'Generate incident'}
         </button>
       </section>
 
