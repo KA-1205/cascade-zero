@@ -6,4 +6,4 @@
 - [x] Add deterministic noisy/delayed sensor scenario and UI labels.
 - [x] Add local decision latency percentiles to policy comparison.
 - [x] Add claims ledger and threat model.
-- [ ] Review diffs, commit increments, and refresh the Git bundle.
+- [x] Review diffs, commit increments, and refresh the Git bundle.
