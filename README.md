@@ -44,7 +44,7 @@ Cascade Zero is a safety firewall and constraint coordinator for autonomous inci
 3. **Joint-Action Risk Engine (`backend/risk`)**: Rule-based safety evaluator that scores concurrent actions, detects toxic combinations (e.g. restart storms during database saturation), and assigns risk scores.
 4. **Constraint Coordinator (`backend/coordinator`)**: Multi-agent mediation layer that filters, sequences, or blocks dangerous concurrent actions according to configured safety policies.
 5. **API & Event Streaming Server (`backend/api`)**: Standard library HTTP server delivering REST endpoints for plan evaluation and Server-Sent Events (SSE) for real-time telemetry streaming.
-6. **Execution Integrations (`backend/integrations`)**: Gated n8n workflow executor with frozen allowlists and Gemma hypothesis validation adapter with deterministic fallbacks.
+6. **Integration Adapters (`backend/integrations`)**: Optional n8n and model adapters are present in the repository; the current operator-review API does not invoke external recovery actions.
 7. **Operator Dashboard (`frontend/app`)**: Next.js 16 operator console featuring incident timelines, service topology graphs, interactive sandbox execution, and plan approvals.
 
 ## Dependencies
@@ -143,19 +143,16 @@ cd frontend/app
 npm run dev
 ```
 
-Navigate to `http://localhost:3000`. Pick a scenario (database slowdown,
-payments degradation, traffic surge) and a policy — the default, **AI
-(Gemma)**, sends incident telemetry to the model, which diagnoses the
-incident, decides which recovery actions to execute, defines test cases that
-the sandbox then scores, and may run counterfactual sandbox probes before
-committing. AI runs execute in the background and stream decisions as they
-land; every decision carries its provenance (model, latency, probes, checks,
-fallback reason). On any candidate plan you can **Backtest** — a local what-if
-replay against the recorded seed that reports whether the plan helps or hurts
-before you approve it. Approval verifies the plan against the recorded trace
-and honestly records `approved` (sandbox default) or `executed` (when a gated
-n8n webhook is configured). The **Project Admin** page aggregates system
-health, AI engine fallback reasons, and run history.
+Navigate to `http://localhost:3000`. Start an operator-review run with one of
+the generated scenarios and a seed. The default AI planner diagnoses synthetic
+telemetry and proposes actions while holding them for operator review. The
+operator can approve a local replay, send a candidate to the Experiment Lab,
+or reject it. Every approval in this workflow records a synthetic replay; no
+external service is contacted. See
+[`DEMO_WORKFLOW.md`](DEMO_WORKFLOW.md) for the
+walkthrough, pitch, scenario trade-offs, and current evaluation limits. The
+**Project Admin** page aggregates simulator health, AI fallback reasons, and
+run history.
 
 ### Running Holdout Experiments
 
@@ -200,5 +197,5 @@ blueprint sets. Approval/backtest endpoints always require the bearer token.
 - **Simulated Environment**: The incident environment and service topologies run in-process as discrete-event simulations rather than manipulating live cloud infrastructure or production Kubernetes clusters.
 - **AI Mode Depends on the Gemini API**: Live decisions need `GEMINI_API_KEY` and a responsive model; any failed call falls back to the deterministic coordinator and is labeled with the failure reason in the event stream.
 - **Heuristic Risk Model (rule policies)**: The `coordinated` policy and the AI fallback path score joint-action risk with deterministic policy matrices and heuristic thresholds, not learned models.
-- **Scoped Integrations**: The Gemma hypothesis adapter and n8n execution workflows operate behind frozen allowlists and local fallbacks for safety.
+- **No Live Recovery Integration in the Demo Flow**: Operator approval records a local synthetic replay. It does not contact the optional integration adapters.
 - **Single-Node In-Memory State**: The API server manages active run states in memory and binds to loopback interfaces by default; persistent multi-tenant storage is not implemented.
