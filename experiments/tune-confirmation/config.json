@@ -1,0 +1,18 @@
+{
+  "protocol": "CZ-014 / threshold tune then one confirmation / frozen before runs",
+  "simulator_config_version": "f1-v2",
+  "scenario": "database slowdown and retry pressure",
+  "overlay": {},
+  "threshold_grid": [0.0, 0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0],
+  "tune_seeds": {"start": 20000, "stop_exclusive": 20030},
+  "confirmation_seeds": {"start": 21000, "stop_exclusive": 21100},
+  "selection": {
+    "primary": "lowest mean unique_failed",
+    "tie_breakers": ["fewest total actions", "lowest threshold"],
+    "default_threshold": 0.5
+  },
+  "confirmation_arms": ["tuned", "default_0_5", "tuned_without_interactions", "guardrails", "no_action"],
+  "simulated": true,
+  "measured": false,
+  "execution": "local in-process simulator only"
+}

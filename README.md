@@ -144,7 +144,7 @@ npm run dev
 ```
 
 Navigate to `http://localhost:3000`. Start an operator-review run with one of
-the generated scenarios and a seed. The default AI planner diagnoses synthetic
+the generated scenarios (including noisy / delayed telemetry) and a seed. The default AI planner diagnoses synthetic
 telemetry and proposes actions while holding them for operator review. The
 operator can approve a local replay, send a candidate to the Experiment Lab,
 or reject it. Every approval in this workflow records a synthetic replay; no
@@ -159,8 +159,23 @@ run history.
 Execute the holdout evaluation harness across seeded incident scenarios:
 
 ```bash
-python3 experiments/holdout_f1_runner.py
+python3 -m experiments.holdout_f1_runner
 ```
+
+Tune the coordinator threshold on a dedicated seed block, then confirm it once
+on a disjoint block:
+
+```bash
+python3 -m experiments.tune_confirm
+```
+
+Both reports label results as simulated and unmeasured. Runtime decision
+latency is local process wall-clock time around the policy block. A live AI
+planner can include its synchronous model call; the deterministic experiments
+do not measure model or network time.
+See [`CLAIMS_LEDGER.md`](CLAIMS_LEDGER.md) for supported claims and the demo
+threat model. `POST /v1/evaluate` is a bearer-protected, decision-only proposal
+screen; it does not execute submitted actions.
 
 ## Deployment
 
