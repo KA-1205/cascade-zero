@@ -9,8 +9,8 @@ jobs:
         with: {python-version: '3.12'}
       - name: JSON contract and fixture validation
         run: python -m json.tool contracts/events.schema.json >/dev/null && python -m json.tool frontend/mock-data.json >/dev/null
-      - name: Compile and smoke-test simulator
-        run: python -m py_compile backend/reference_sim.py && python backend/reference_sim.py --seed 42 --policy all
+      - name: Compile backend and smoke-test the simulator
+        run: python -m compileall -q backend && python -m backend.simulator --seed 42 --policy all
       - name: Install test dependencies
         run: python -m pip install pytest==9.1.1 jsonschema==4.26.0 pyyaml==6.0.3
       - name: Run full test suite
