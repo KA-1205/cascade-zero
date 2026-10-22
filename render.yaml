@@ -1,0 +1,25 @@
+# Render Blueprint for the Cascade Zero backend (python -m backend.api).
+# Create via Render dashboard: New -> Blueprint -> select this repo.
+services:
+  - type: web
+    name: cascade-zero-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python -m backend.api
+    healthCheckPath: /v1/health
+    envVars:
+      - key: PYTHON_VERSION
+        value: "3.12.6"
+      # Container hosts bind 0.0.0.0 and inject PORT; the API requires this
+      # explicit opt-in before it will bind off-loopback.
+      - key: CASCADE_ALLOW_PUBLIC_BIND
+        value: "true"
+      # Shared secret for approval/backtest endpoints. Enter one when
+      # prompted, then reuse the same value in the Vercel project.
+      - key: CASCADE_APPROVAL_TOKEN
+        sync: false
+      # Sandbox execution stays off in hosted environments.
+      - key: ALLOW_SANDBOX_ACTIONS
+        value: "false"
+      # Optional live AI: add GEMINI_API_KEY / GEMMA_MODEL in the dashboard.

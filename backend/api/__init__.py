@@ -429,10 +429,22 @@ class Handler(BaseHTTPRequestHandler):
                 entry[1]["backtest"] = result
         return self._send(200, result)
 
-def serve(host: str = "127.0.0.1", port: int = 8000) -> None:
-    """Start a sandbox-only HTTP server on the loopback interface by default."""
+def serve(host: str | None = None, port: int | None = None) -> None:
+    """Start the sandbox HTTP server on the loopback interface by default.
+
+    Host and port fall back to the CASCADE_HOST / PORT environment variables
+    (container hosts such as Render inject PORT). Binding off-loopback requires
+    CASCADE_ALLOW_PUBLIC_BIND=true so the sandbox stays loopback-only unless
+    exposing it is a deliberate deployment decision.
+    """
     load_dotenv()
-    if host not in ("127.0.0.1", "localhost", "::1"):
-        raise ValueError("API may bind only to loopback")
+    host = host or os.environ.get("CASCADE_HOST") or "127.0.0.1"
+    if port is None:
+        port = int(os.environ.get("PORT") or 8000)
+    if host not in ("127.0.0.1", "localhost", "::1") and (
+            os.environ.get("CASCADE_ALLOW_PUBLIC_BIND") != "true"):
+        raise ValueError(
+            "API may bind only to loopback; set CASCADE_ALLOW_PUBLIC_BIND=true "
+            "to allow a public bind")
     with ThreadingHTTPServer((host, port), Handler) as server:
         server.serve_forever()

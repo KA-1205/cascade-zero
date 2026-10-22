@@ -1,0 +1,3 @@
+# Runtime deps for the backend API (pins mirror pyproject.toml).
+jsonschema==4.26.0
+pyyaml==6.0.3

@@ -165,6 +165,36 @@ Execute the holdout evaluation harness across seeded incident scenarios:
 python3 experiments/holdout_f1_runner.py
 ```
 
+## Deployment
+
+The backend deploys to Render and the frontend to Vercel, both from this repo.
+
+### Backend on Render
+
+1. Render dashboard → **New → Blueprint** → select this repo. The `render.yaml`
+   blueprint provisions a Python web service (`python -m backend.api`, health
+   check `/v1/health`) and prompts for `CASCADE_APPROVAL_TOKEN` — paste a strong
+   random value and keep it for Vercel.
+2. Optional: add `GEMINI_API_KEY` / `GEMMA_MODEL` in the service's Environment
+   tab to enable live AI decisions (otherwise the deterministic coordinator
+   fallback runs).
+3. Once deployed, note the service URL (`https://cascade-zero-api.onrender.com`).
+
+The API binds loopback-only by default; hosted container binds (`0.0.0.0` plus
+the injected `PORT`) require `CASCADE_ALLOW_PUBLIC_BIND=true`, which the
+blueprint sets. Approval/backtest endpoints always require the bearer token.
+
+### Frontend on Vercel
+
+1. Vercel → **Add New → Project** → import this repo.
+2. Set **Root Directory** to `frontend/app` (framework auto-detected as Next.js).
+3. Add environment variables before the first build:
+   - `CASCADE_API_ORIGIN` — the Render service URL from above (the Next server
+     proxies `/v1/*` here, so no CORS is needed on the backend)
+   - `CASCADE_APPROVAL_TOKEN` — the same token entered on Render
+4. Deploy. Changing `CASCADE_API_ORIGIN` later requires a redeploy, because the
+   proxy rewrite is resolved at build time.
+
 ## Actual Limitations
 
 - **Simulated Environment**: The incident environment and service topologies run in-process as discrete-event simulations rather than manipulating live cloud infrastructure or production Kubernetes clusters.
