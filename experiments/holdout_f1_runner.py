@@ -19,6 +19,7 @@ FIELDS = ("scenario", "arm", "policy", "seed", "config_version", "trace_hash",
           "simulated", "measured", "unique_offered", "unique_succeeded", "unique_failed",
           "total_attempts", "dropped", "latency_p50", "latency_p95", "max_queue_depth",
           "peak_db_connections", "sustained_recovery_time", "actions_executed",
+          "decision_latency_p50_ms", "decision_latency_p95_ms",
           "false_blocks")
 
 
@@ -26,9 +27,11 @@ def seed_range(scenario):
     return range(scenario["seeds"]["start"], scenario["seeds"]["stop_exclusive"])
 
 
-def run_arm(seed, policy, config, threshold=0.5):
+def run_arm(seed, policy, config, threshold=0.5, include_interactions=True):
     # Match backend/api wiring; stock backend.simulator CLI cannot invoke N3.
-    plan = default_coordinator(threshold=threshold).plan if policy == "coordinated" else None
+    plan = (default_coordinator(threshold=threshold,
+                                include_interactions=include_interactions).plan
+            if policy == "coordinated" else None)
     return simulate(seed, policy, config, plan=plan)
 
 
@@ -73,14 +76,16 @@ def render_report(rows, protocol):
         seeds = list(seed_range(scenario))
         lines += [f"### {sid}: {scenario['label']}", "",
                   "This is an F1-engine proxy, not a validated new fault family." if sid != "F1_primary" else "Primary F1 scenario (unchanged default simulator configuration).", "",
-                  f"Held-out seeds {seeds[0]}–{seeds[-1]}, {len(seeds)} per arm; identical overlay for all four arms: `{encode(scenario['overlay']).strip()}`.", "",
-                  "| Arm | Failed unique users: full seed distribution summary | Total failed / offered | No sustained recovery | Actions total | simulated / measured |", "|---|---|---:|---:|---:|---|"]
+                  f"Held-out seeds {seeds[0]}–{seeds[-1]}, {len(seeds)} per arm; identical overlay for all five arms: `{encode(scenario['overlay']).strip()}`.", "",
+                  "| Arm | Failed unique users: full seed distribution summary | Total failed / offered | No sustained recovery | Actions total | Decision latency p50 / p95 (median per-run ms) | simulated / measured |", "|---|---|---:|---:|---:|---:|---|"]
         for arm in arms:
             group = [by[sid, arm, seed] for seed in seeds]
             fails = [int(r["unique_failed"]) for r in group]
-            lines.append(f"| {arm} ({arms[arm]}) | {distribution(fails)} | {sum(fails)} / {sum(int(r['unique_offered']) for r in group)} | {sum(int(r['sustained_recovery_time']) == -1 for r in group)} / {len(group)} | {sum(int(r['actions_executed']) for r in group)} | true / false |")
+            latency50 = statistics.median(float(r["decision_latency_p50_ms"]) for r in group)
+            latency95 = statistics.median(float(r["decision_latency_p95_ms"]) for r in group)
+            lines.append(f"| {arm} ({arms[arm]}) | {distribution(fails)} | {sum(fails)} / {sum(int(r['unique_offered']) for r in group)} | {sum(int(r['sustained_recovery_time']) == -1 for r in group)} / {len(group)} | {sum(int(r['actions_executed']) for r in group)} | {latency50:.4f} / {latency95:.4f} | true / false |")
         lines += ["", "| Paired comparison | Mean N3 − baseline failed | 95% bootstrap CI | N3 strictly better / tied / worse seeds | simulated / measured |", "|---|---:|---:|---:|---|"]
-        for arm in ("N0", "N1", "N2"):
+        for arm in ("N0", "N1", "N2", "N3_no_interactions"):
             differences = [int(by[sid, "N3", seed]["unique_failed"]) - int(by[sid, arm, seed]["unique_failed"]) for seed in seeds]
             lo, hi = paired_ci(differences, protocol["bootstrap"])
             counts = (sum(d < 0 for d in differences), sum(d == 0 for d in differences), sum(d > 0 for d in differences))
@@ -102,29 +107,29 @@ def render_report(rows, protocol):
         trace_matches = sum(group[i]["trace_hash"] == by[primary["id"], "N1", seeds[i]]["trace_hash"] for i in range(len(seeds)))
         lines.append(f"| {arm} | {distribution(fails)} | {sum(fails)} / {sum(int(r['unique_offered']) for r in group)} | {sum(int(r['actions_executed']) for r in group)} | {trace_matches} / {len(seeds)} (decision events differ) | {matches} / {len(seeds)} | true / false |")
     lines += ["", "Threshold 1.0 independent-equivalence finding: " +
-              ("all recorded outcome/resource metrics equal N1 for every seed." if all(
-                  all(by[primary['id'], 'N3_threshold_1', seed][m] == by[primary['id'], 'N1', seed][m]
-                      for m in ("unique_offered", "unique_failed", "unique_succeeded", "total_attempts", "dropped", "actions_executed", "latency_p50", "latency_p95", "max_queue_depth", "peak_db_connections", "sustained_recovery_time")) for seed in seeds)
-               else "NOT independent-equivalent on recorded outcomes/resources; this is a finding, not a reason to change thresholds."),
-              "Threshold 0.0 vs N0: " + ("all recorded outcome/resource metrics equal N0 for every seed."
-              if all(all(by[primary['id'], 'N3_threshold_0', seed][m] == by[primary['id'], 'N0', seed][m]
+          ("all recorded outcome/resource metrics equal N1 for every seed." if all(
+              all(by[primary['id'], 'N3_threshold_1', seed][m] == by[primary['id'], 'N1', seed][m]
                   for m in ("unique_offered", "unique_failed", "unique_succeeded", "total_attempts", "dropped", "actions_executed", "latency_p50", "latency_p95", "max_queue_depth", "peak_db_connections", "sustained_recovery_time")) for seed in seeds)
-              else "NOT N0-equivalent on recorded outcomes/resources."), "",
-              "## Literal failure-criterion ledger", "",
-              "- N0 equal/better than N3: not triggered in aggregate for any prespecified block (individual primary seeds can still be worse).",
-              "- Conventional N2 equal/better than N3: **TRIGGERED in every block; reject the superiority claim.**",
-              "- Action effects hard-coded to favor the coordinator: no policy-specific action effect branch observed in the simulator; whether simulator assumptions introduce a structural advantage cannot be ruled out by this experiment. No favorable claim is made.",
-              "- Unseen seeds fail: N3 fails against N2 on all 190 held-out paired seeds; unseen fault families are untested. The gate fails on N2.",
-              "- False safety claims: none made here; true false-block labels and risk calibration are unavailable, so safety is not established. Any such claim would fail this gate.", "",
-              "## Other metrics and limitations", "",
-              "Every per-seed value for latency p50/p95, maximum queue depth, peak DB connections, sustained recovery time, actions, dropped attempts and unique outcomes is in `runs.csv` (the complete empirical distributions). -1 recovery means 30 continuous healthy ticks were never observed within the horizon; do not treat it as zero. Latencies are for resolved transactions, including failures; no per-success latency split is exposed.",
-              "`false_blocks` is blank: a rejected proposal is not evidence that it would have been safe. Counterfactual false-block labels, unnecessary interventions, predicted-vs-observed risk calibration, and decision wall-clock overhead are not supplied by the simulator and are **not measured**. Predicted risk is an uncalibrated heuristic, never an observed failure probability.",
-              "No-Gemma is vacuous/not applicable: there is no model in the in-process decision loop. No-interaction-term and static-constraints-only ablations require changing backend risk/coordinator code; F4 dependency outage and F5 delayed/noisy telemetry cannot be represented by existing F1 config overlays without backend changes. None was silently relabeled. F2/F3/F6 are likewise not validated by these F1-engine overlays.",
-              "Action effects in the simulator are shared across policies, not explicitly policy-specific, but simulator realism and absence of implicit structural advantage are not proven; this screening cannot certify that effects do not favor N3. Unseen *seeds within these overlays* are tested; unseen fault families are not. No claim of safety or operational recovery is supported; false safety claims cannot be ruled out without measured counterfactuals.",
-              "Fairness: same seed, merged config and exogenous arrival stream per arm; policies see the same *interface* `ObservableState` from the previous tick, not identical numerical observations after their actions diverge. `tests/simulator/test_simulator.py::test_observation_field_allowlist_and_isolation`, `tests/agents/test_agents.py::test_only_observable_state_and_threshold` and `tests/coordinator/test_coordinator.py::test_coordinated_reproducible_observable_only_and_common_traffic` check H1 access restrictions. `tests/experiments/` verifies common arrivals and plan's observation type; it cannot prove fairness of the simulator's modeled action effects.",
-              "Only F1-engine proxy screening; no Docker/measured data. No external endpoint, actual credential, production action, or real incident was exercised.", "",
-              "## Reproduction", "",
-              "From repository root: `experiments/holdout-f1/reproduce.sh`. It invokes the in-process harness rather than the stock CLI because `--policy coordinated` errors and `--policy all` omits N3. All four arms call `simulate(seed, policy, config)` directly; N3 supplies `plan=default_coordinator().plan`, matching backend/api wiring. Full traces are regenerated in gitignored `experiments/outputs/holdout-f1/`; committed `events.jsonl` contains only the prespecified first seed of each scenario, tick 10, selected event kinds, including both primary controls. `runs.csv` is the entire result set. Full simulator events retain simulated=true and measured=false; the CSV rows do too.", ""]
+           else "NOT independent-equivalent on recorded outcomes/resources; this is a finding, not a reason to change thresholds."),
+          "Threshold 0.0 vs N0: " + ("all recorded outcome/resource metrics equal N0 for every seed."
+          if all(all(by[primary['id'], 'N3_threshold_0', seed][m] == by[primary['id'], 'N0', seed][m]
+              for m in ("unique_offered", "unique_failed", "unique_succeeded", "total_attempts", "dropped", "actions_executed", "latency_p50", "latency_p95", "max_queue_depth", "peak_db_connections", "sustained_recovery_time")) for seed in seeds)
+          else "NOT N0-equivalent on recorded outcomes/resources."), "",
+          "## Literal failure-criterion ledger", "",
+          "- N0 equal/better than N3: not triggered in aggregate for any prespecified block (individual primary seeds can still be worse).",
+          "- Conventional N2 equal/better than N3: **TRIGGERED in every block; reject the superiority claim.**",
+          "- Action effects hard-coded to favor the coordinator: no policy-specific action effect branch observed in the simulator; whether simulator assumptions introduce a structural advantage cannot be ruled out by this experiment. No favorable claim is made.",
+          "- Unseen seeds fail: N3 fails against N2 on all 190 held-out paired seeds; unseen fault families are untested. The gate fails on N2.",
+          "- False safety claims: none made here; true false-block labels and risk calibration are unavailable, so safety is not established. Any such claim would fail this gate.", "",
+          "## Other metrics and limitations", "",
+          "Every per-seed value for latency p50/p95, maximum queue depth, peak DB connections, sustained recovery time, actions, dropped attempts and unique outcomes is in `runs.csv` (the complete empirical distributions). -1 recovery means 30 continuous healthy ticks were never observed within the horizon; do not treat it as zero. Latencies are for resolved transactions, including failures; no per-success latency split is exposed.",
+              "`false_blocks` is blank: a rejected proposal is not evidence that it would have been safe. Counterfactual false-block labels, unnecessary interventions, and predicted-vs-observed risk calibration are not supplied by the simulator and are **not measured**. Decision latency is recorded separately in `runs.csv` as local process wall-clock time around the per-tick policy block. This deterministic harness has no model or network call; timing excludes production actions and infrastructure. Predicted risk is an uncalibrated heuristic, never an observed failure probability.",
+          "No-Gemma is vacuous/not applicable: there is no model in the in-process decision loop. The no-interaction arm disables pairwise risk terms while keeping the same base action scores and threshold. Static-constraints-only ablation remains unimplemented; F4 dependency outage and F5 delayed/noisy telemetry cannot be represented by the F1 overlays. None was silently relabeled. F2/F3/F6 are likewise not validated by these F1-engine overlays.",
+          "Action effects in the simulator are shared across policies, not explicitly policy-specific, but simulator realism and absence of implicit structural advantage are not proven; this screening cannot certify that effects do not favor N3. Unseen *seeds within these overlays* are tested; unseen fault families are not. No claim of safety or operational recovery is supported; false safety claims cannot be ruled out without measured counterfactuals.",
+          "Fairness: same seed, merged config and exogenous arrival stream per arm; policies see the same *interface* `ObservableState` from the previous tick, not identical numerical observations after their actions diverge. `tests/simulator/test_simulator.py::test_observation_field_allowlist_and_isolation`, `tests/agents/test_agents.py::test_only_observable_state_and_threshold` and `tests/coordinator/test_coordinator.py::test_coordinated_reproducible_observable_only_and_common_traffic` check H1 access restrictions. `tests/experiments/` verifies common arrivals and plan's observation type; it cannot prove fairness of the simulator's modeled action effects.",
+          "Only F1-engine proxy screening; no Docker/measured data. No external endpoint, actual credential, production action, or real incident was exercised.", "",
+          "## Reproduction", "",
+          "From repository root: `experiments/holdout-f1/reproduce.sh`. It invokes the in-process harness rather than the stock CLI because `--policy coordinated` errors and `--policy all` omits N3. Each arm calls `simulate(seed, policy, config)` directly; the coordinator arm supplies `default_coordinator().plan`, and the ablation arm uses the same coordinator with pairwise terms disabled. Full traces are regenerated in gitignored `experiments/outputs/holdout-f1/`; committed `events.jsonl` contains only the prespecified first seed of each scenario, tick 10, selected event kinds, including primary controls. `runs.csv` is the entire result set. Full simulator events retain simulated=true and measured=false; the CSV rows do too.", ""]
     return "\n".join(lines)
 
 
@@ -143,14 +148,19 @@ def main():
         for seed in seed_range(scenario):
             for arm, policy in arms.items():
                 threshold = protocol["negative_controls"].get(arm, protocol["coordinator_threshold"])
-                result = run_arm(seed, policy, cfg, threshold)
+                simulation_policy = "coordinated" if arm == "N3_no_interactions" else policy
+                result = run_arm(seed, simulation_policy, cfg, threshold,
+                                 include_interactions=arm != "N3_no_interactions")
                 assert result["simulated"] is True and result["measured"] is False
                 m = result["metrics"]
                 assert m["unique_offered"] == m["unique_succeeded"] + m["unique_failed"]
-                row = {"scenario": scenario["id"], "arm": arm, "policy": policy,
+                row = {"scenario": scenario["id"], "arm": arm, "policy": simulation_policy,
                        "seed": seed, "config_version": result["config_version"],
                        "trace_hash": result["trace_hash"], "simulated": "true", "measured": "false",
-                       **m, "false_blocks": ""}
+                       **m,
+                       "decision_latency_p50_ms": result["runtime"]["decision_latency_p50_ms"],
+                       "decision_latency_p95_ms": result["runtime"]["decision_latency_p95_ms"],
+                       "false_blocks": ""}
                 rows.append(row)
                 trace = "".join(encode(event) for event in result["events"])
                 (output / f"{scenario['id']}-{seed}-{arm}.jsonl").write_text(trace, encoding="utf-8")

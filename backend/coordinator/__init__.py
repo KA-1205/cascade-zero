@@ -25,12 +25,16 @@ class PlanResult:
 
 
 class Coordinator:
-    def __init__(self, threshold: float = 0.5, allowed_actions: tuple[str, ...] | None = None):
+    def __init__(self, threshold: float = 0.5, allowed_actions: tuple[str, ...] | None = None,
+                 include_interactions: bool = True):
         if not isinstance(threshold, (int, float)) or not math.isfinite(threshold) or not 0 <= threshold <= 1:
             raise ValueError("threshold must be finite and between 0 and 1")
         self.threshold = threshold
         self.allowed_actions = frozenset(allowed_actions if allowed_actions is not None
                                          else AGENT_ACTIONS.values())
+        if type(include_interactions) is not bool:
+            raise ValueError("include_interactions must be a boolean")
+        self.include_interactions = include_interactions
         if not self.allowed_actions <= set(AGENT_ACTIONS.values()):
             raise ValueError("unknown allowed action")
 
@@ -48,7 +52,8 @@ class Coordinator:
         assessments = {}
         for count in range(len(names) + 1):
             for subset in combinations(names, count):
-                assessments[subset] = evaluate([by_name[name] for name in subset], state)
+                assessments[subset] = evaluate([by_name[name] for name in subset], state,
+                                               include_interactions=self.include_interactions)
         safe = [subset for subset, assessment in assessments.items()
                 if assessment.predicted_risk <= self.threshold]
         chosen = min(safe, key=lambda subset: (-len(subset), subset))
@@ -73,9 +78,13 @@ class Coordinator:
         return PlanResult(list(chosen), assessment.predicted_risk, reasons)
 
 
-def default_coordinator(threshold: float = 0.5) -> Coordinator:
+def default_coordinator(threshold: float = 0.5,
+                        allowed_actions: tuple[str, ...] | None = None,
+                        include_interactions: bool = True) -> Coordinator:
     """Use the default agents' allowlisted recovery action set."""
-    return Coordinator(threshold, tuple(AGENT_ACTIONS[agent.agent_id] for agent in default_agents()))
+    configured_actions = (tuple(AGENT_ACTIONS[agent.agent_id] for agent in default_agents())
+                          if allowed_actions is None else allowed_actions)
+    return Coordinator(threshold, configured_actions, include_interactions)
 
 
 __all__ = ["Coordinator", "PlanResult", "default_coordinator"]

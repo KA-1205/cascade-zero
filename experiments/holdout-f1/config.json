@@ -1,8 +1,8 @@
 {
   "protocol": "CZ-013 / D-0024 / screening-grade / frozen before held-out runs",
-  "simulator_config_version": "f1-v1",
+  "simulator_config_version": "f1-v2",
   "development_seeds_sanity_only": [0, 1, 2, 3, 4, 5, 6, 7, 8, 9],
-  "arms": {"N0": "none", "N1": "independent", "N2": "guardrails", "N3": "coordinated"},
+  "arms": {"N0": "none", "N1": "independent", "N2": "guardrails", "N3": "coordinated", "N3_no_interactions": "coordinated without pairwise interaction terms"},
   "coordinator_threshold": 0.5,
   "negative_controls": {"N3_threshold_1": 1.0, "N3_threshold_0": 0.0},
   "scenarios": [

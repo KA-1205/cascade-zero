@@ -16,20 +16,22 @@ Lower unique_failed is better. Intervals are 95% matched-seed percentile bootstr
 
 Primary F1 scenario (unchanged default simulator configuration).
 
-Held-out seeds 10000–10099, 100 per arm; identical overlay for all four arms: `{}`.
+Held-out seeds 10000–10099, 100 per arm; identical overlay for all five arms: `{}`.
 
-| Arm | Failed unique users: full seed distribution summary | Total failed / offered | No sustained recovery | Actions total | simulated / measured |
-|---|---|---:|---:|---:|---|
-| N0 (none) | n=100; min=1344; q25=1783; median=2065; q75=2297; max=2642; mean=2040.48 | 204048 / 605614 | 100 / 100 | 0 | true / false |
-| N1 (independent) | n=100; min=1344; q25=2830; median=2860; q75=2883; max=2949; mean=2758.86 | 275886 / 605614 | 100 / 100 | 27532 | true / false |
-| N2 (guardrails) | n=100; min=1344; q25=1398; median=1424.5; q75=1442; max=1509; mean=1422.00 | 142200 / 605614 | 100 / 100 | 700 | true / false |
-| N3 (coordinated) | n=100; min=1405; q25=1475; median=1513.5; q75=1543; max=1656; mean=1516.87 | 151687 / 605614 | 100 / 100 | 14442 | true / false |
+| Arm | Failed unique users: full seed distribution summary | Total failed / offered | No sustained recovery | Actions total | Decision latency p50 / p95 (median per-run ms) | simulated / measured |
+|---|---|---:|---:|---:|---:|---|
+| N0 (none) | n=100; min=1344; q25=1783; median=2065; q75=2297; max=2642; mean=2040.48 | 204048 / 605614 | 100 / 100 | 0 | 0.0000 / 0.0010 | true / false |
+| N1 (independent) | n=100; min=1344; q25=2830; median=2860; q75=2883; max=2949; mean=2758.86 | 275886 / 605614 | 100 / 100 | 27532 | 0.0120 / 0.0160 | true / false |
+| N2 (guardrails) | n=100; min=1344; q25=1398; median=1424.5; q75=1442; max=1509; mean=1422.00 | 142200 / 605614 | 100 / 100 | 700 | 0.0030 / 0.0090 | true / false |
+| N3 (coordinated) | n=100; min=1405; q25=1475; median=1513.5; q75=1543; max=1656; mean=1516.87 | 151687 / 605614 | 100 / 100 | 14442 | 0.0535 / 0.1505 | true / false |
+| N3_no_interactions (coordinated without pairwise interaction terms) | n=100; min=1374; q25=2818; median=2857.5; q75=2884; max=2963; mean=2673.39 | 267339 / 605614 | 100 / 100 | 26141 | 0.0870 / 0.1630 | true / false |
 
 | Paired comparison | Mean N3 − baseline failed | 95% bootstrap CI | N3 strictly better / tied / worse seeds | simulated / measured |
 |---|---:|---:|---:|---|
 | N3 − N0 | -523.61 | [-586.72, -457.70] | 92 / 0 / 8 | true / false |
 | N3 − N1 | -1241.99 | [-1306.50, -1166.29] | 94 / 0 / 6 | true / false |
 | N3 − N2 | 94.87 | [85.94, 104.46] | 0 / 0 / 100 | true / false |
+| N3 − N3_no_interactions | -1156.52 | [-1244.49, -1059.80] | 91 / 0 / 9 | true / false |
 
 **Literal criterion: N0 equals/beats N3: not triggered; N2 equals/beats N3: FAILED** (aggregate failures, identical seed block).
 
@@ -37,20 +39,22 @@ Held-out seeds 10000–10099, 100 per arm; identical overlay for all four arms: 
 
 This is an F1-engine proxy, not a validated new fault family.
 
-Held-out seeds 10100–10129, 30 per arm; identical overlay for all four arms: `{"fault":{"degraded_capacity":45,"end":18,"recovery_end":28}}`.
+Held-out seeds 10100–10129, 30 per arm; identical overlay for all five arms: `{"fault":{"degraded_capacity":45,"end":18,"recovery_end":28}}`.
 
-| Arm | Failed unique users: full seed distribution summary | Total failed / offered | No sustained recovery | Actions total | simulated / measured |
-|---|---|---:|---:|---:|---|
-| N0 (none) | n=30; min=758; q25=1474; median=1575.5; q75=1736; max=2407; mean=1579.87 | 47396 / 181820 | 30 / 30 | 0 | true / false |
-| N1 (independent) | n=30; min=684; q25=788; median=2687.5; q75=2725; max=2773; mean=2045.80 | 61374 / 181820 | 30 / 30 | 7034 | true / false |
-| N2 (guardrails) | n=30; min=656; q25=697; median=717; q75=752; max=785; mean=719.13 | 21574 / 181820 | 30 / 30 | 150 | true / false |
-| N3 (coordinated) | n=30; min=728; q25=756; median=792; q75=817; max=1136; mean=813.33 | 24400 / 181820 | 30 / 30 | 3706 | true / false |
+| Arm | Failed unique users: full seed distribution summary | Total failed / offered | No sustained recovery | Actions total | Decision latency p50 / p95 (median per-run ms) | simulated / measured |
+|---|---|---:|---:|---:|---:|---|
+| N0 (none) | n=30; min=758; q25=1474; median=1575.5; q75=1736; max=2407; mean=1579.87 | 47396 / 181820 | 30 / 30 | 0 | 0.0000 / 0.0010 | true / false |
+| N1 (independent) | n=30; min=684; q25=788; median=2687.5; q75=2725; max=2773; mean=2045.80 | 61374 / 181820 | 30 / 30 | 7034 | 0.0110 / 0.0140 | true / false |
+| N2 (guardrails) | n=30; min=656; q25=697; median=717; q75=752; max=785; mean=719.13 | 21574 / 181820 | 30 / 30 | 150 | 0.0030 / 0.0060 | true / false |
+| N3 (coordinated) | n=30; min=728; q25=756; median=792; q75=817; max=1136; mean=813.33 | 24400 / 181820 | 30 / 30 | 3706 | 0.0340 / 0.1090 | true / false |
+| N3_no_interactions (coordinated without pairwise interaction terms) | n=30; min=660; q25=746; median=2696; q75=2747; max=2800; mean=2008.97 | 60269 / 181820 | 30 / 30 | 6928 | 0.0830 / 0.1335 | true / false |
 
 | Paired comparison | Mean N3 − baseline failed | 95% bootstrap CI | N3 strictly better / tied / worse seeds | simulated / measured |
 |---|---:|---:|---:|---|
 | N3 − N0 | -766.53 | [-891.03, -634.27] | 29 / 0 / 1 | true / false |
 | N3 − N1 | -1232.47 | [-1546.00, -898.67] | 22 / 0 / 8 | true / false |
 | N3 − N2 | 94.20 | [71.37, 122.50] | 0 / 0 / 30 | true / false |
+| N3 − N3_no_interactions | -1195.63 | [-1522.47, -839.57] | 21 / 0 / 9 | true / false |
 
 **Literal criterion: N0 equals/beats N3: not triggered; N2 equals/beats N3: FAILED** (aggregate failures, identical seed block).
 
@@ -58,20 +62,22 @@ Held-out seeds 10100–10129, 30 per arm; identical overlay for all four arms: `
 
 This is an F1-engine proxy, not a validated new fault family.
 
-Held-out seeds 10130–10159, 30 per arm; identical overlay for all four arms: `{"fault":{"degraded_capacity":22,"end":52,"recovery_end":68}}`.
+Held-out seeds 10130–10159, 30 per arm; identical overlay for all five arms: `{"fault":{"degraded_capacity":22,"end":52,"recovery_end":68}}`.
 
-| Arm | Failed unique users: full seed distribution summary | Total failed / offered | No sustained recovery | Actions total | simulated / measured |
-|---|---|---:|---:|---:|---|
-| N0 (none) | n=30; min=2196; q25=2471; median=2618.5; q75=2699; max=3061; mean=2608.23 | 78247 / 181755 | 30 / 30 | 0 | true / false |
-| N1 (independent) | n=30; min=2069; q25=3007; median=3028; q75=3044; max=3107; mean=2939.57 | 88187 / 181755 | 30 / 30 | 8290 | true / false |
-| N2 (guardrails) | n=30; min=2062; q25=2108; median=2140; q75=2152; max=2194; mean=2133.97 | 64019 / 181755 | 30 / 30 | 265 | true / false |
-| N3 (coordinated) | n=30; min=2106; q25=2189; median=2233; q75=2265; max=2386; mean=2236.17 | 67085 / 181755 | 30 / 30 | 4953 | true / false |
+| Arm | Failed unique users: full seed distribution summary | Total failed / offered | No sustained recovery | Actions total | Decision latency p50 / p95 (median per-run ms) | simulated / measured |
+|---|---|---:|---:|---:|---:|---|
+| N0 (none) | n=30; min=2196; q25=2471; median=2618.5; q75=2699; max=3061; mean=2608.23 | 78247 / 181755 | 30 / 30 | 0 | 0.0000 / 0.0010 | true / false |
+| N1 (independent) | n=30; min=2069; q25=3007; median=3028; q75=3044; max=3107; mean=2939.57 | 88187 / 181755 | 30 / 30 | 8290 | 0.0120 / 0.0160 | true / false |
+| N2 (guardrails) | n=30; min=2062; q25=2108; median=2140; q75=2152; max=2194; mean=2133.97 | 64019 / 181755 | 30 / 30 | 265 | 0.0040 / 0.0100 | true / false |
+| N3 (coordinated) | n=30; min=2106; q25=2189; median=2233; q75=2265; max=2386; mean=2236.17 | 67085 / 181755 | 30 / 30 | 4953 | 0.0855 / 0.1695 | true / false |
+| N3_no_interactions (coordinated without pairwise interaction terms) | n=30; min=2069; q25=2991; median=3031; q75=3044; max=3090; mean=2909.00 | 87270 / 181755 | 30 / 30 | 8046 | 0.0875 / 0.1615 | true / false |
 
 | Paired comparison | Mean N3 − baseline failed | 95% bootstrap CI | N3 strictly better / tied / worse seeds | simulated / measured |
 |---|---:|---:|---:|---|
 | N3 − N0 | -372.07 | [-446.97, -299.10] | 30 / 0 / 0 | true / false |
 | N3 − N1 | -703.40 | [-799.20, -593.97] | 27 / 0 / 3 | true / false |
 | N3 − N2 | 102.20 | [82.67, 123.57] | 0 / 0 / 30 | true / false |
+| N3 − N3_no_interactions | -672.83 | [-780.23, -549.63] | 26 / 0 / 4 | true / false |
 
 **Literal criterion: N0 equals/beats N3: not triggered; N2 equals/beats N3: FAILED** (aggregate failures, identical seed block).
 
@@ -79,20 +85,22 @@ Held-out seeds 10130–10159, 30 per arm; identical overlay for all four arms: `
 
 This is an F1-engine proxy, not a validated new fault family.
 
-Held-out seeds 10160–10189, 30 per arm; identical overlay for all four arms: `{"db_connection_limit":42,"traffic":{"arrival":63}}`.
+Held-out seeds 10160–10189, 30 per arm; identical overlay for all five arms: `{"db_connection_limit":42,"traffic":{"arrival":63}}`.
 
-| Arm | Failed unique users: full seed distribution summary | Total failed / offered | No sustained recovery | Actions total | simulated / measured |
-|---|---|---:|---:|---:|---|
-| N0 (none) | n=30; min=4477; q25=4535; median=4558.5; q75=4587; max=4641; mean=4561.63 | 136849 / 207881 | 30 / 30 | 0 | true / false |
-| N1 (independent) | n=30; min=3396; q25=3772; median=3799.5; q75=3826; max=3894; mean=3780.37 | 113411 / 207881 | 30 / 30 | 9104 | true / false |
-| N2 (guardrails) | n=30; min=3344; q25=3375; median=3391.5; q75=3426; max=3472; mean=3398.20 | 101946 / 207881 | 30 / 30 | 360 | true / false |
-| N3 (coordinated) | n=30; min=3475; q25=3804; median=3828.5; q75=3848; max=3900; mean=3811.90 | 114357 / 207881 | 30 / 30 | 6195 | true / false |
+| Arm | Failed unique users: full seed distribution summary | Total failed / offered | No sustained recovery | Actions total | Decision latency p50 / p95 (median per-run ms) | simulated / measured |
+|---|---|---:|---:|---:|---:|---|
+| N0 (none) | n=30; min=4477; q25=4535; median=4558.5; q75=4587; max=4641; mean=4561.63 | 136849 / 207881 | 30 / 30 | 0 | 0.0010 / 0.0010 | true / false |
+| N1 (independent) | n=30; min=3396; q25=3772; median=3799.5; q75=3826; max=3894; mean=3780.37 | 113411 / 207881 | 30 / 30 | 9104 | 0.0120 / 0.0165 | true / false |
+| N2 (guardrails) | n=30; min=3344; q25=3375; median=3391.5; q75=3426; max=3472; mean=3398.20 | 101946 / 207881 | 30 / 30 | 360 | 0.0050 / 0.0110 | true / false |
+| N3 (coordinated) | n=30; min=3475; q25=3804; median=3828.5; q75=3848; max=3900; mean=3811.90 | 114357 / 207881 | 30 / 30 | 6195 | 0.0965 / 0.1860 | true / false |
+| N3_no_interactions (coordinated without pairwise interaction terms) | n=30; min=3358; q25=3773; median=3796; q75=3833; max=3908; mean=3773.23 | 113197 / 207881 | 30 / 30 | 8480 | 0.0900 / 0.1840 | true / false |
 
 | Paired comparison | Mean N3 − baseline failed | 95% bootstrap CI | N3 strictly better / tied / worse seeds | simulated / measured |
 |---|---:|---:|---:|---|
 | N3 − N0 | -749.73 | [-778.00, -726.87] | 30 / 0 / 0 | true / false |
 | N3 − N1 | 31.53 | [-4.70, 75.77] | 4 / 0 / 26 | true / false |
 | N3 − N2 | 413.70 | [386.33, 434.90] | 0 / 0 / 30 | true / false |
+| N3 − N3_no_interactions | 38.67 | [4.70, 75.97] | 7 / 1 / 22 | true / false |
 
 **Literal criterion: N0 equals/beats N3: not triggered; N2 equals/beats N3: FAILED** (aggregate failures, identical seed block).
 
@@ -119,12 +127,12 @@ Threshold 0.0 vs N0: all recorded outcome/resource metrics equal N0 for every se
 ## Other metrics and limitations
 
 Every per-seed value for latency p50/p95, maximum queue depth, peak DB connections, sustained recovery time, actions, dropped attempts and unique outcomes is in `runs.csv` (the complete empirical distributions). -1 recovery means 30 continuous healthy ticks were never observed within the horizon; do not treat it as zero. Latencies are for resolved transactions, including failures; no per-success latency split is exposed.
-`false_blocks` is blank: a rejected proposal is not evidence that it would have been safe. Counterfactual false-block labels, unnecessary interventions, predicted-vs-observed risk calibration, and decision wall-clock overhead are not supplied by the simulator and are **not measured**. Predicted risk is an uncalibrated heuristic, never an observed failure probability.
-No-Gemma is vacuous/not applicable: there is no model in the in-process decision loop. No-interaction-term and static-constraints-only ablations require changing backend risk/coordinator code; F4 dependency outage and F5 delayed/noisy telemetry cannot be represented by existing F1 config overlays without backend changes. None was silently relabeled. F2/F3/F6 are likewise not validated by these F1-engine overlays.
+`false_blocks` is blank: a rejected proposal is not evidence that it would have been safe. Counterfactual false-block labels, unnecessary interventions, and predicted-vs-observed risk calibration are not supplied by the simulator and are **not measured**. Decision latency is recorded separately in `runs.csv` as local process wall-clock time around the per-tick policy block. This deterministic harness has no model or network call; timing excludes production actions and infrastructure. Predicted risk is an uncalibrated heuristic, never an observed failure probability.
+No-Gemma is vacuous/not applicable: there is no model in the in-process decision loop. The no-interaction arm disables pairwise risk terms while keeping the same base action scores and threshold. Static-constraints-only ablation remains unimplemented; F4 dependency outage and F5 delayed/noisy telemetry cannot be represented by the F1 overlays. None was silently relabeled. F2/F3/F6 are likewise not validated by these F1-engine overlays.
 Action effects in the simulator are shared across policies, not explicitly policy-specific, but simulator realism and absence of implicit structural advantage are not proven; this screening cannot certify that effects do not favor N3. Unseen *seeds within these overlays* are tested; unseen fault families are not. No claim of safety or operational recovery is supported; false safety claims cannot be ruled out without measured counterfactuals.
 Fairness: same seed, merged config and exogenous arrival stream per arm; policies see the same *interface* `ObservableState` from the previous tick, not identical numerical observations after their actions diverge. `tests/simulator/test_simulator.py::test_observation_field_allowlist_and_isolation`, `tests/agents/test_agents.py::test_only_observable_state_and_threshold` and `tests/coordinator/test_coordinator.py::test_coordinated_reproducible_observable_only_and_common_traffic` check H1 access restrictions. `tests/experiments/` verifies common arrivals and plan's observation type; it cannot prove fairness of the simulator's modeled action effects.
 Only F1-engine proxy screening; no Docker/measured data. No external endpoint, actual credential, production action, or real incident was exercised.
 
 ## Reproduction
 
-From repository root: `experiments/holdout-f1/reproduce.sh`. It invokes the in-process harness rather than the stock CLI because `--policy coordinated` errors and `--policy all` omits N3. All four arms call `simulate(seed, policy, config)` directly; N3 supplies `plan=default_coordinator().plan`, matching backend/api wiring. Full traces are regenerated in gitignored `experiments/outputs/holdout-f1/`; committed `events.jsonl` contains only the prespecified first seed of each scenario, tick 10, selected event kinds, including both primary controls. `runs.csv` is the entire result set. Full simulator events retain simulated=true and measured=false; the CSV rows do too.
+From repository root: `experiments/holdout-f1/reproduce.sh`. It invokes the in-process harness rather than the stock CLI because `--policy coordinated` errors and `--policy all` omits N3. Each arm calls `simulate(seed, policy, config)` directly; the coordinator arm supplies `default_coordinator().plan`, and the ablation arm uses the same coordinator with pairwise terms disabled. Full traces are regenerated in gitignored `experiments/outputs/holdout-f1/`; committed `events.jsonl` contains only the prespecified first seed of each scenario, tick 10, selected event kinds, including primary controls. `runs.csv` is the entire result set. Full simulator events retain simulated=true and measured=false; the CSV rows do too.

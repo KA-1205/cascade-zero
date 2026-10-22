@@ -2,7 +2,7 @@
 
 These are heuristic predictions, not measured outcomes or simulation probes.
 Only error_rate, queue_depth and db_load from ObservableState influence scoring.
-``config`` is reserved for the future coordinator interface and is not used.
+Pairwise interactions can be disabled for controlled ablation experiments.
 """
 
 from __future__ import annotations
@@ -81,13 +81,22 @@ def evaluate(
     proposals: list[dict] | list[RecoveryAction],
     state: ObservableState,
     config: dict | None = None,
+    *,
+    include_interactions: bool | None = None,
 ) -> RiskAssessment:
     """Estimate action and pairwise overlap risk, independently of simulator internals.
 
     The same action proposed twice contributes twice; each cross-action pair
     contributes once per occurrence. Risk is capped at 1 after adding all terms.
-    ``config`` is accepted for API compatibility but does not tune heuristic weights.
+    ``config["include_interactions"]`` or the explicit keyword can disable pair terms.
+    Base action weights remain fixed heuristic values in either mode.
     """
+    if config is not None and not isinstance(config, dict):
+        raise ValueError("risk config must be an object")
+    if include_interactions is None:
+        include_interactions = (config or {}).get("include_interactions", True)
+    if type(include_interactions) is not bool:
+        raise ValueError("include_interactions must be a boolean")
     actions = sorted(
         (proposal if isinstance(proposal, dict) else proposal.to_proposal_dict())["action"]
         for proposal in proposals
@@ -110,14 +119,15 @@ def evaluate(
         reason = f"{action}: base action risk under observable pressure ({term} basis points)."
         terms.append(RiskTerm((action,), term, reason))
         reasons.append(reason)
-    for left, right in combinations(actions, 2):
-        pair = (left, right)
-        if pair in _INTERACTIONS:
-            term = _term(_INTERACTIONS[pair], pressures)
-            total += term
-            reason = f"{left} x {right}: {_PAIR_EXPLANATIONS[pair]} ({term} basis points)."
-            terms.append(RiskTerm((left, right), term, reason))
-            reasons.append(reason)
+    if include_interactions:
+        for left, right in combinations(actions, 2):
+            pair = (left, right)
+            if pair in _INTERACTIONS:
+                term = _term(_INTERACTIONS[pair], pressures)
+                total += term
+                reason = f"{left} x {right}: {_PAIR_EXPLANATIONS[pair]} ({term} basis points)."
+                terms.append(RiskTerm((left, right), term, reason))
+                reasons.append(reason)
 
     # Integer half-up rounding of basis points to hundredths; no float accumulation.
     cents = (min(total, 10_000) + 50) // 100
