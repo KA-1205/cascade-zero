@@ -6,6 +6,16 @@ info:
 servers:
   - url: http://localhost:8000
 paths:
+  /v1/evaluate:
+    post:
+      operationId: evaluateProposals
+      description: Risk-gated proposal evaluation only. It returns an allowed subset and reasons but never executes actions.
+      requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/EvaluationRequest'}}}}
+      responses:
+        '200': {description: Evaluation decision, content: {application/json: {schema: {$ref: '#/components/schemas/EvaluationResponse'}}}}
+        '400': {description: Invalid request}
+        '403': {description: Forbidden}
+      security: [{bearerAuth: []}]
   /v1/health:
     get:
       operationId: getHealth
@@ -82,7 +92,7 @@ components:
       required: [seed, scenario, policy]
       properties:
         seed: {type: integer, minimum: 0}
-        scenario: {type: string, enum: [db_slowdown, payments_degradation, traffic_surge]}
+        scenario: {type: string, enum: [db_slowdown, payments_degradation, traffic_surge, telemetry_faults]}
         policy: {type: string, enum: [none, independent, guardrails, coordinated, ai_coordinated]}
         purpose: {type: string, enum: [policy_comparison, operator_review], default: policy_comparison}
     Run:
@@ -91,7 +101,7 @@ components:
       properties:
         id: {type: string}
         seed: {type: integer}
-        scenario: {type: string}
+        scenario: {type: string, enum: [db_slowdown, payments_degradation, traffic_surge, telemetry_faults]}
         policy: {type: string}
         state: {type: string, enum: [created, running, completed, failed, cancelled]}
         simulated: {type: boolean}
@@ -100,6 +110,60 @@ components:
         event_count: {type: integer}
         plan_count: {type: integer}
         metrics: {type: object, additionalProperties: {type: number}}
+        runtime:
+          type: object
+          required: [decision_latency_p50_ms, decision_latency_p95_ms, decision_latency_samples, source]
+          properties:
+            decision_latency_p50_ms: {type: number, minimum: 0}
+            decision_latency_p95_ms: {type: number, minimum: 0}
+            decision_latency_samples: {type: integer, minimum: 1}
+            source: {type: string, enum: [local_process_wall_clock]}
+    EvaluationRequest:
+      type: object
+      additionalProperties: false
+      required: [scenario, state, proposals]
+      properties:
+        scenario: {type: string, enum: [db_slowdown, payments_degradation, traffic_surge, telemetry_faults]}
+        state:
+          type: object
+          additionalProperties: false
+          required: [error_rate, latency, queue_depth, db_load]
+          properties:
+            tick: {type: integer, minimum: 0, maximum: 1000000}
+            error_rate: {type: number, minimum: 0, maximum: 1}
+            latency: {type: number, minimum: 0, maximum: 1000000}
+            queue_depth: {type: integer, minimum: 0, maximum: 1000000}
+            db_load: {type: number, minimum: 0, maximum: 1}
+            service_queues: {type: object, additionalProperties: {type: integer, minimum: 0, maximum: 1000000}}
+            telemetry_age_ticks: {type: integer, minimum: 0, maximum: 100}
+            telemetry_dropped: {type: boolean}
+        proposals:
+          type: array
+          maxItems: 3
+          items:
+            type: object
+            additionalProperties: false
+            required: [agent_id, action, target, expected_effect, cost, confidence, ttl]
+            properties:
+              agent_id: {type: string, enum: [retry-agent, scale-agent, restart-agent]}
+              action: {type: string, enum: [increase_retries, add_replicas, restart_service]}
+              target: {type: string, enum: [database, orders, payments]}
+              expected_effect: {type: string, minLength: 1, maxLength: 160}
+              cost: {type: string, minLength: 1, maxLength: 120}
+              confidence: {type: number, minimum: 0, maximum: 1}
+              ttl: {type: integer, minimum: 1, maximum: 120}
+    EvaluationResponse:
+      type: object
+      required: [decision, allowed_actions, blocked_actions, predicted_risk, reasons, simulated, measured, external_execution]
+      properties:
+        decision: {type: string, enum: [allow, hold]}
+        allowed_actions: {type: array, items: {type: string}}
+        blocked_actions: {type: array, items: {type: object, required: [action, reason], properties: {action: {type: string}, reason: {type: string}}}}
+        predicted_risk: {type: [number, 'null'], minimum: 0, maximum: 1}
+        reasons: {type: array, items: {type: string}}
+        simulated: {type: boolean, const: true}
+        measured: {type: boolean, const: false}
+        external_execution: {type: boolean, const: false}
     Topology:
       type: object
       required: [nodes, edges]

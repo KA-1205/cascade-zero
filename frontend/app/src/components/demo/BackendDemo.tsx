@@ -231,6 +231,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
   }
 
   const metrics = events.filter((event): event is MetricEvent => event.kind === 'metric');
+  const latestSensor = metrics.at(-1)?.payload;
   const peakError = metrics.length
     ? Math.round(Math.max(...metrics.map((event) => event.payload.error_rate * 100)) * 10) / 10
     : null;
@@ -244,6 +245,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
   }
   const faultedService: Record<string, string> = {
     db_slowdown: 'database', payments_degradation: 'payments', traffic_surge: 'gateway',
+    telemetry_faults: 'telemetry sensors',
   };
   const failedRatio = run && run.metrics && run.metrics.unique_offered
     ? (run.metrics.unique_failed ?? 0) / run.metrics.unique_offered : 0;
@@ -322,7 +324,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
             <section style={card}>
               <SectionHeader index="01" title="How this dashboard works" />
               <ol style={{ ...muted, paddingLeft: 20, display: 'grid', gap: 6 }}>
-                <li><strong style={{ color: 'var(--text-primary)' }}>Generate an incident</strong> from the <Link href="/incidents">Incidents tab</Link>. Choose one of three scenarios and a seed; each seed produces reproducible synthetic telemetry.</li>
+                <li><strong style={{ color: 'var(--text-primary)' }}>Generate an incident</strong> from the <Link href="/incidents">Incidents tab</Link>. Choose one of four scenarios and a seed; each seed produces reproducible synthetic telemetry.</li>
                 <li><strong style={{ color: 'var(--text-primary)' }}>Review the diagnosis.</strong> The AI planner can suggest recovery actions, but operator review runs hold those actions until you decide.</li>
                 <li><strong style={{ color: 'var(--text-primary)' }}>The policy decides.</strong> {POLICY_BLURB[policy]}</li>
                 <li><strong style={{ color: 'var(--text-primary)' }}>Choose what happens next.</strong> Open <Link href={'/plans/' + run.id}>Recovery Plans</Link> to approve a sandbox replay, test a plan in the Experiment Lab, or reject it.</li>
@@ -349,7 +351,10 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
               </section>
               {view === 'incident' && (
                 <section style={card}>
-                  <SectionHeader index={numbering.telemetry} title="Incident telemetry" subtitle="Backlog (blue) and error rate (red) per tick; orange verticals mark executed recovery actions. The fault starts at tick 10 and eases around tick 35." />
+                  <SectionHeader index={numbering.telemetry} title="Incident telemetry" subtitle={run.scenario === 'telemetry_faults' ? 'The chart shows generated sensor readings; telemetry can be noisy, delayed, or dropped. Transaction outcomes remain simulator ground truth.' : 'Backlog (blue) and error rate (red) per tick; orange verticals mark executed recovery actions.'} />
+                  {run.scenario === 'telemetry_faults' && latestSensor && <p style={{ ...muted, margin: '0 0 10px' }}>
+                    Latest sensor report: {latestSensor.sensor_age_ticks ?? 0} tick(s) old · {latestSensor.sensor_dropped ? 'reading dropped; previous value repeated' : 'reading received'} · {latestSensor.sensor_noise_applied ? 'noise applied' : 'no noise on this reading'}.
+                  </p>}
                   <IncidentTelemetryChart events={events} />
                 </section>
               )}
@@ -412,7 +417,9 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
                     return info && (info.live || info.fallback_reason);
                   });
                   const liveOnes = aiEntries.filter((event) => event.payload.ai?.live).length;
-                  const faultText = run.scenario === 'traffic_surge'
+                  const faultText = run.scenario === 'telemetry_faults'
+                    ? 'telemetry sensors returned delayed, noisy, and occasional missing readings while the service fault remained unchanged'
+                    : run.scenario === 'traffic_surge'
                     ? 'traffic surged past capacity from tick 10'
                     : run.scenario === 'payments_degradation'
                       ? 'the payments service degraded from tick 10 to 35'
@@ -422,6 +429,12 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
                         ? `AI planner used the model at ${liveOnes} point${liveOnes === 1 ? '' : 's'} (${aiEntries.length - liveOnes} used the fallback)`
                         : `the model was unreachable, so the rule fallback decided all ${aiEntries.length || 0} time${aiEntries.length === 1 ? '' : 's'}`)
                     : `${POLICY_LABEL[run.policy]} decided with deterministic rules`;
+                  if (run.purpose === 'operator_review') {
+                    return `Seed ${run.seed}: ${faultText}. The policy evaluated generated telemetry; ${decider}. No action was applied during operator review.`;
+                  }
+                  if (run.scenario === 'telemetry_faults' && actions === 0) {
+                    return `Seed ${run.seed}: ${faultText}. The policy held recovery actions because the readings were stale or incomplete; the underlying incident remained synthetic and continued independently.`;
+                  }
                   return `Seed ${run.seed}: ${faultText}. Recovery agents proposed actions from observable telemetry; ${decider}. ` +
                     (actions > 0
                       ? `${actions} action${actions === 1 ? '' : 's'} executed; the decisions list below has them all.`
@@ -530,12 +543,14 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
             <button type="button" disabled={busy} onClick={compare} style={action}>{busy ? 'Running…' : 'Run comparison on this seed'}</button>
             {comparison.length > 0 && <div style={{ overflowX: 'auto', marginTop: 18 }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead><tr><th>Policy</th><th>Unique failed</th><th>Actions</th><th>Sustained recovery tick</th></tr></thead>
+                <thead><tr><th>Policy</th><th>Unique failed</th><th>Actions</th><th>Recovery tick</th><th>Decision p50 ms</th><th>Decision p95 ms</th></tr></thead>
                 <tbody>{comparison.map((arm) => <tr key={arm.id} style={{ borderTop: '1px solid var(--border)' }}>
                   <td style={{ padding: 10 }}>{POLICY_LABEL[arm.policy]}</td><td>{number(arm.metrics?.unique_failed)}</td><td>{number(arm.metrics?.actions_executed)}</td>
                   <td>{arm.metrics?.sustained_recovery_time === -1 ? 'Not reached' : number(arm.metrics?.sustained_recovery_time)}</td>
+                  <td>{arm.runtime?.decision_latency_p50_ms ?? '—'}</td><td>{arm.runtime?.decision_latency_p95_ms ?? '—'}</td>
                 </tr>)}</tbody>
               </table>
+              <p style={muted}>Decision latency is local process wall-clock time for the per-tick policy block. A live AI planner may include its model call. It is reported separately from synthetic service outcomes.</p>
               <p style={muted}>One seed is a demonstration, not a statistical result.</p>
             </div>}
           </section>}

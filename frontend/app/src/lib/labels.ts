@@ -21,17 +21,19 @@ export const POLICY_BLURB: Record<RunPolicy, string> = {
 };
 
 export const SCENARIOS: RunScenario[] = [
-  'db_slowdown', 'payments_degradation', 'traffic_surge',
+  'db_slowdown', 'payments_degradation', 'traffic_surge', 'telemetry_faults',
 ];
 
 export const SCENARIO_LABEL: Record<RunScenario, string> = {
   db_slowdown: 'Database slowdown',
   payments_degradation: 'Payments degradation',
   traffic_surge: 'Traffic surge',
+  telemetry_faults: 'Noisy / delayed telemetry',
 };
 
 export const SCENARIO_BLURB: Record<RunScenario, string> = {
   db_slowdown: 'The shared database slows down; every service that touches it starts timing out and retrying.',
   payments_degradation: 'The payments service itself degrades; its backlog grows while orders stays calm.',
   traffic_surge: 'A sustained wave of traffic overwhelms the gateway and services before any fault exists.',
+  telemetry_faults: 'The simulator generates delayed, noisy, and occasionally dropped readings while actual transaction outcomes remain separate.',
 };

@@ -12,7 +12,9 @@ from __future__ import annotations
 import copy
 import hashlib
 import json
+import math
 import random
+from time import perf_counter
 from collections import deque
 from collections.abc import Mapping
 from dataclasses import dataclass, field
@@ -25,7 +27,7 @@ from backend.actions import ACTION_AGENTS
 
 
 DEFAULT_CONFIG: dict[str, Any] = {
-    "config_version": "f1-v1",
+    "config_version": "f1-v2",
     "ticks": 110,
     "topology": {"gateway": 120, "orders": 80, "payments": 80, "database": 100},
     "db_connection_limit": 55,
@@ -50,6 +52,10 @@ DEFAULT_CONFIG: dict[str, Any] = {
                 "guardrail_max_retries": 1},
     "healthy": {"error_rate": 0.05, "queue_depth": 12,
                 "latency": 5, "consecutive_ticks": 30},
+    "telemetry": {"delay_ticks": 0, "dropout_rate": 0.0,
+                   "noise": {"error_rate": 0.0, "latency": 0.0,
+                             "queue_depth": 0, "db_load": 0.0,
+                             "service_queue": 0}},
 }
 
 
@@ -76,6 +82,23 @@ def load_config(path: str | Path | dict | None = None) -> dict[str, Any]:
     for section in ("topology", "traffic", "actions", "healthy"):
         if any(isinstance(v, (int, float)) and v < 0 for v in config[section].values()):
             raise ValueError(f"negative parameter in {section}")
+    telemetry = config["telemetry"]
+    if (type(telemetry["delay_ticks"]) is not int or not 0 <= telemetry["delay_ticks"] <= 20
+            or type(telemetry["dropout_rate"]) not in (int, float)
+            or not 0 <= telemetry["dropout_rate"] <= 1
+            or not math.isfinite(telemetry["dropout_rate"])
+            or not isinstance(telemetry["noise"], dict)):
+        raise ValueError("invalid telemetry delay, dropout, or noise configuration")
+    noise = telemetry["noise"]
+    if (set(noise) != {"error_rate", "latency", "queue_depth", "db_load", "service_queue"}
+            or any(type(noise[key]) not in (int, float) or noise[key] < 0
+                   or noise[key] > (1_000_000 if key in ("latency", "queue_depth", "service_queue") else 1)
+                   or not math.isfinite(noise[key])
+                   for key in noise)
+            or type(noise["queue_depth"]) is not int
+            or type(noise["service_queue"]) is not int
+            or noise["error_rate"] > 1 or noise["db_load"] > 1):
+        raise ValueError("invalid telemetry noise configuration")
     t, f = config["traffic"], config["fault"]
     if f.get("service_name") not in config["topology"]:
         raise ValueError("fault.service_name must name a service in the topology")
@@ -118,6 +141,12 @@ SCENARIOS: dict[str, dict[str, Any]] = {
         "fault": {"degraded_capacity": 100, "degraded_duration": 1,
                   "recovery_capacity": 100, "recovery_duration": 1},
         "actions": {"disabled_actions": ["restart_service"]},
+    },
+    "telemetry_faults": {
+        "telemetry": {"delay_ticks": 2, "dropout_rate": 0.08,
+                       "noise": {"error_rate": 0.03, "latency": 2,
+                                 "queue_depth": 8, "db_load": 0.1,
+                                 "service_queue": 6}},
     },
 }
 
@@ -167,6 +196,7 @@ class _Run:
     rng: random.Random
     retry_rng: random.Random
     run_id: str
+    sensor_rng: random.Random | None = None
     tick: int = 0
     events: list[dict] = field(default_factory=list)
     transactions: list[_Transaction] = field(default_factory=list)
@@ -188,6 +218,14 @@ class _Run:
     telemetry: dict = field(default_factory=lambda: {
         "error_rate": 0.0, "latency": 0.0, "queue_depth": 0,
         "db_load": 0.0})
+    service_telemetry: dict[str, int] = field(default_factory=lambda: {
+        name: 0 for name in ("gateway", "orders", "payments", "database")})
+    telemetry_history: list[dict] = field(default_factory=list)
+    sensor_sample_tick: int = 0
+    telemetry_age_ticks: int = 0
+    telemetry_dropped: bool = False
+    telemetry_noise_applied: bool = False
+    decision_latency_ms: list[float] = field(default_factory=list)
 
 
 def observe(run: _Run, tick: int) -> ObservableState:
@@ -195,6 +233,12 @@ def observe(run: _Run, tick: int) -> ObservableState:
     if tick != run.tick:
         raise ValueError("observe must use the current tick")
     m = run.telemetry
+    flags = [flag for flag, present in (
+        ("elevated_errors", m["error_rate"] > 0.05),
+        ("high_queue", m["queue_depth"] > 25),
+        ("db_busy", m["db_load"] > 0.8)) if present]
+    if run.telemetry_age_ticks > 0 or run.telemetry_dropped:
+        flags.append("telemetry_stale")
     return ObservableState(tick, m["error_rate"], m["latency"],
                            m["queue_depth"], m["db_load"],
                             MappingProxyType({"edges": (("gateway", "orders"),
@@ -202,13 +246,50 @@ def observe(run: _Run, tick: int) -> ObservableState:
                                                         ("orders", "database"),
                                                         ("payments", "database")),
                                               "services": ("gateway", "orders", "payments", "database")}),
-                           tuple(flag for flag, present in (
-                               ("elevated_errors", m["error_rate"] > 0.05),
-                               ("high_queue", m["queue_depth"] > 25),
-                               ("db_busy", m["db_load"] > 0.8)) if present),
+                           tuple(flags),
                            tuple(run.action_history),
-                           MappingProxyType({name: len(queue)
-                                             for name, queue in run.queues.items()}))
+                           MappingProxyType(dict(run.service_telemetry)))
+
+
+def _sense_telemetry(run: _Run, tick: int, truth: dict,
+                     service_queues: dict[str, int]) -> dict:
+    """Transform generated truth into a seeded, delayed sensor reading."""
+    sensor = run.config["telemetry"]
+    run.telemetry_history.append({"tick": tick, **truth,
+                                  "service_queues": dict(service_queues)})
+    sample_index = max(0, len(run.telemetry_history) - 1 - sensor["delay_ticks"])
+    sample = run.telemetry_history[sample_index]
+    rng = run.sensor_rng or random.Random(run.seed)
+    if rng.random() < sensor["dropout_rate"]:
+        run.telemetry_dropped = True
+        run.telemetry_age_ticks = tick - run.sensor_sample_tick
+        run.telemetry_noise_applied = False
+        return {"sensor_age_ticks": run.telemetry_age_ticks,
+                "sensor_dropped": True, "sensor_noise_applied": False}
+
+    noise = sensor["noise"]
+    sensed = {}
+    for key in ("error_rate", "latency", "queue_depth", "db_load"):
+        amplitude = noise[key]
+        if key == "queue_depth":
+            value = sample[key] + rng.randint(-amplitude, amplitude) if amplitude else sample[key]
+            sensed[key] = max(0, value)
+        else:
+            value = sample[key] + rng.uniform(-amplitude, amplitude) if amplitude else sample[key]
+            sensed[key] = max(0.0, min(1.0, value)) if key in ("error_rate", "db_load") else max(0.0, value)
+    service_noise = noise["service_queue"]
+    run.service_telemetry = {
+        name: max(0, value + rng.randint(-service_noise, service_noise)) if service_noise else value
+        for name, value in sample["service_queues"].items()
+    }
+    run.telemetry = sensed
+    run.sensor_sample_tick = sample["tick"]
+    run.telemetry_age_ticks = tick - sample["tick"]
+    run.telemetry_dropped = False
+    run.telemetry_noise_applied = any(value > 0 for value in noise.values())
+    return {"sensor_age_ticks": run.telemetry_age_ticks,
+            "sensor_dropped": False,
+            "sensor_noise_applied": run.telemetry_noise_applied}
 
 
 def _emit(run: _Run, kind: str, payload: dict) -> None:
@@ -222,7 +303,7 @@ def _emit(run: _Run, kind: str, payload: dict) -> None:
 
 
 def _proposals(policy: str, state: ObservableState, action_config: dict) -> list[dict]:
-    if policy == "none":
+    if policy == "none" or "telemetry_stale" in state.incident_flags:
         return []
     a = action_config
     triggers = (("increase_retries", state.error_rate >= a["retry_error_trigger"]),
@@ -377,11 +458,13 @@ def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=N
         digest = hashlib.sha256(f"{seed}:{name}".encode()).digest()
         return random.Random(int.from_bytes(digest))
     run = _Run(seed, policy, cfg, stream("traffic"), stream("retry"),
-               hashlib.sha256(json.dumps([seed, policy, cfg], sort_keys=True).encode()).hexdigest()[:16])
+               hashlib.sha256(json.dumps([seed, policy, cfg], sort_keys=True).encode()).hexdigest()[:16],
+               sensor_rng=stream("telemetry"))
     fault = cfg["fault"]
     for tick in range(cfg["ticks"]):
         run.tick = tick
         state = observe(run, tick)
+        decision_started = perf_counter()
         if policy in ("coordinated", "ai_coordinated"):
             proposals = _proposals("independent", state, cfg["actions"])
             decision = plan(state, proposals)
@@ -397,9 +480,11 @@ def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=N
                     if proposal["action"] in selected:
                         _apply(run, proposal)
         else:
+            proposals = _proposals(policy, state, cfg["actions"])
             if apply_actions:
-                for proposal in _proposals(policy, state, cfg["actions"]):
+                for proposal in proposals:
                     _apply(run, proposal)
+        run.decision_latency_ms.append((perf_counter() - decision_started) * 1000)
         if tick in (fault["start"], fault["end"] + 1, fault["recovery_end"] + 1):
             _emit(run, "incident", {"phase": ("degraded" if tick == fault["start"] else
                                                 "partial" if tick == fault["end"] + 1 else "restored")})
@@ -477,20 +562,21 @@ def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=N
         # Aggregate outcome telemetry; outstanding work is visible via queue/load.
         error_rate = failed_tick / max(1, failed_tick + completed)
         latency = _percentile(tick_latencies, 0.5) or 0
-        run.telemetry = {"error_rate": error_rate, "latency": latency,
-                         "queue_depth": depth,
-                         "db_load": connections / cfg["db_connection_limit"]}
+        true_telemetry = {"error_rate": error_rate, "latency": latency,
+                          "queue_depth": depth,
+                          "db_load": connections / cfg["db_connection_limit"]}
+        true_queues = {name: len(queue) for name, queue in run.queues.items()}
+        sensor_quality = _sense_telemetry(run, tick, true_telemetry, true_queues)
         h = cfg["healthy"]
         healthy = (tick > fault["start"] and error_rate <= h["error_rate"]
                    and depth <= h["queue_depth"] and latency <= h["latency"])
         run.healthy_streak = run.healthy_streak + 1 if healthy else 0
         if run.recovery_time == -1 and run.healthy_streak >= h["consecutive_ticks"]:
             run.recovery_time = tick - h["consecutive_ticks"] + 1 - fault["start"]
-        _emit(run, "metric", {**run.telemetry, "arrivals": arrivals,
+        _emit(run, "metric", {**run.telemetry, **sensor_quality, "arrivals": arrivals,
                               "unique_completed": completed, "unique_failed": failed_tick,
                               "attempts_total": run.total_attempts, "dropped": run.dropped,
-                              "service_queues": {name: len(queue)
-                                                 for name, queue in run.queues.items()}})
+                              "service_queues": dict(run.service_telemetry)})
     run.tick = cfg["ticks"]
     for tx in run.transactions:
         _fail(run, tx)  # End-of-horizon pending users count as failures once.
@@ -505,6 +591,12 @@ def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=N
                "sustained_recovery_time": run.recovery_time,
                "actions_executed": len(run.action_history)}
     canonical = json.dumps(run.events, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
+    latency_values = sorted(run.decision_latency_ms)
+    runtime = {"decision_latency_p50_ms": round(latency_values[max(0, math.ceil(len(latency_values) * 0.50) - 1)], 3),
+               "decision_latency_p95_ms": round(latency_values[max(0, math.ceil(len(latency_values) * 0.95) - 1)], 3),
+               "decision_latency_samples": len(latency_values),
+               "source": "local_process_wall_clock"}
     return {"seed": seed, "policy": policy, "config_version": cfg["config_version"],
             "config": cfg, "trace_hash": hashlib.sha256(canonical.encode()).hexdigest(),
-            "metrics": metrics, "events": run.events, "simulated": True, "measured": False}
+            "metrics": metrics, "events": run.events, "simulated": True, "measured": False,
+            "runtime": runtime}

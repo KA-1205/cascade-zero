@@ -6,7 +6,7 @@
 
 export type RunState = 'created' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type RunPolicy = 'none' | 'independent' | 'guardrails' | 'coordinated' | 'ai_coordinated';
-export type RunScenario = 'db_slowdown' | 'payments_degradation' | 'traffic_surge';
+export type RunScenario = 'db_slowdown' | 'payments_degradation' | 'traffic_surge' | 'telemetry_faults';
 export type PlanStatus = 'candidate' | 'rejected' | 'approved' | 'delayed' | 'executed';
 export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
 export type IncidentStatus = 'active' | 'investigating' | 'resolved' | 'closed';
@@ -46,6 +46,12 @@ export interface Run {
   simulated: boolean;
   purpose?: 'policy_comparison' | 'operator_review';
   metrics?: RunMetrics;
+  runtime?: {
+    decision_latency_p50_ms: number;
+    decision_latency_p95_ms: number;
+    decision_latency_samples: number;
+    source: 'local_process_wall_clock';
+  };
   /** ISO 8601 wall-clock start */
   created_at?: string;
   /** Present when the simulation crashed: exception type and message. */
@@ -102,6 +108,9 @@ export interface MetricPayload {
   attempts_total: number;
   dropped: number;
   service_queues: Record<string, number>;
+  sensor_age_ticks?: number;
+  sensor_dropped?: boolean;
+  sensor_noise_applied?: boolean;
   measured?: boolean;
 }
 

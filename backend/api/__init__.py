@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import hmac
 import json
+import math
 import os
 import re
 import threading
@@ -17,12 +18,15 @@ import traceback
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from types import MappingProxyType
 from uuid import uuid4
 
+from backend.actions import ACTION_AGENTS
 from backend.ai import AIPlanner, GeminiClient
 from backend.ai.planner import counterfactual
 from backend.coordinator import default_coordinator
-from backend.simulator import DEFAULT_CONFIG, SCENARIOS, scenario_overlay, simulate
+from backend.simulator import (DEFAULT_CONFIG, SCENARIOS, ObservableState,
+                               scenario_overlay, simulate)
 
 
 _runs: dict[str, dict] = {}
@@ -53,6 +57,67 @@ def _valid_run_request(body: object) -> bool:
                                        "coordinated", "ai_coordinated")
             and body.get("purpose", "policy_comparison") in
             ("policy_comparison", "operator_review"))
+
+
+def _evaluation_request(body: object) -> tuple[dict, list[dict]] | None:
+    """Validate the external-agent boundary before any scoring is attempted."""
+    if not isinstance(body, dict) or set(body) != {"scenario", "state", "proposals"}:
+        return None
+    if (not isinstance(body["scenario"], str) or body["scenario"] not in SCENARIOS
+            or not isinstance(body["state"], dict)):
+        return None
+    state = body["state"]
+    allowed_state = {"tick", "error_rate", "latency", "queue_depth", "db_load",
+                     "service_queues", "telemetry_age_ticks", "telemetry_dropped"}
+    required_state = {"error_rate", "latency", "queue_depth", "db_load"}
+    if not required_state <= set(state) or not set(state) <= allowed_state:
+        return None
+    if ("tick" in state and (type(state["tick"]) is not int or not 0 <= state["tick"] <= 1_000_000)
+            or "telemetry_age_ticks" in state and
+            (type(state["telemetry_age_ticks"]) is not int or not 0 <= state["telemetry_age_ticks"] <= 100)
+            or "telemetry_dropped" in state and type(state["telemetry_dropped"]) is not bool):
+        return None
+    for key, upper in (("error_rate", 1), ("db_load", 1), ("latency", 1_000_000)):
+        value = state[key]
+        if (type(value) not in (int, float) or not 0 <= value <= upper
+                or not math.isfinite(value)):
+            return None
+    if type(state["queue_depth"]) is not int or not 0 <= state["queue_depth"] <= 1_000_000:
+        return None
+    queues = state.get("service_queues", {})
+    if (not isinstance(queues, dict) or set(queues) - set(DEFAULT_CONFIG["topology"])
+            or any(type(value) is not int or not 0 <= value <= 1_000_000
+                   for value in queues.values())):
+        return None
+
+    proposals = body["proposals"]
+    proposal_fields = {"agent_id", "action", "target", "expected_effect", "cost", "confidence", "ttl"}
+    if not isinstance(proposals, list) or len(proposals) > 3:
+        return None
+    overlay = scenario_overlay(body["scenario"])
+    restart_target = overlay.get("actions", {}).get("restart_target", DEFAULT_CONFIG["actions"]["restart_target"])
+    targets = {"increase_retries": {"database"}, "add_replicas": {"orders"},
+               "restart_service": {restart_target}}
+    seen = set()
+    for proposal in proposals:
+        if not isinstance(proposal, dict) or set(proposal) != proposal_fields:
+            return None
+        action = proposal["action"]
+        if (not isinstance(action, str) or action not in ACTION_AGENTS
+                or not isinstance(proposal["agent_id"], str)
+                or proposal["agent_id"] != ACTION_AGENTS[action]
+                or not isinstance(proposal["target"], str)
+                or proposal["target"] not in targets[action] or action in seen
+                or not isinstance(proposal["expected_effect"], str)
+                or not 1 <= len(proposal["expected_effect"]) <= 160
+                or not isinstance(proposal["cost"], str) or not 1 <= len(proposal["cost"]) <= 120
+                or type(proposal["confidence"]) not in (int, float)
+                or not 0 <= proposal["confidence"] <= 1
+                or not math.isfinite(proposal["confidence"])
+                or type(proposal["ttl"]) is not int or not 1 <= proposal["ttl"] <= 120):
+            return None
+        seen.add(action)
+    return state, proposals
 
 
 def load_dotenv() -> None:
@@ -146,6 +211,7 @@ def _execute_run(stored: dict, run: dict, request: dict, overlay: dict) -> None:
                           apply_actions=request.get("purpose") != "operator_review")
         run["metrics"] = {key: value for key, value in result["metrics"].items()
                           if isinstance(value, (int, float)) and not isinstance(value, bool)}
+        run["runtime"] = result["runtime"]
         run["trace_hash"] = result["trace_hash"]
         for index, original in enumerate(result["events"]):
             event = {key: value for key, value in original.items() if key in _event_fields}
@@ -249,6 +315,8 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path == "/v1/runs":
             return self._create_run()
+        if path == "/v1/evaluate":
+            return self._evaluate_proposals()
         match = _approval_path.fullmatch(path)
         if match:
             return self._approve(match.group(1))
@@ -256,6 +324,73 @@ class Handler(BaseHTTPRequestHandler):
         if match:
             return self._backtest(match.group(1))
         return self._send(404, {"error": "not found"})
+
+    def _evaluate_proposals(self) -> None:
+        """Return an allowlisted action subset without executing any action."""
+        if not self._authorize():
+            return self._send(403, {"error": "forbidden"})
+        try:
+            body = self._body()
+        except (ValueError, UnicodeDecodeError):
+            return self._send(400, {"error": "invalid JSON body"})
+        parsed = _evaluation_request(body)
+        if parsed is None:
+            return self._send(400, {"error": "invalid evaluation request"})
+        data, proposals = parsed
+        age = data.get("telemetry_age_ticks", 0)
+        dropped = data.get("telemetry_dropped", False)
+        if age > 0 or dropped:
+            return self._send(200, {
+                "decision": "hold", "allowed_actions": [],
+                "blocked_actions": [{"action": proposal["action"],
+                                     "reason": "Telemetry is stale or incomplete; refresh it before evaluating recovery actions."}
+                                    for proposal in proposals],
+                "predicted_risk": None,
+                "reasons": ["No action is eligible while telemetry is stale or incomplete."],
+                "simulated": True, "measured": False, "external_execution": False,
+            })
+
+        scenario = body["scenario"]
+        overlay = scenario_overlay(scenario)
+        disabled = set(overlay.get("actions", {}).get("disabled_actions", []))
+        eligible = [proposal for proposal in proposals if proposal["action"] not in disabled]
+        faulted_actions = [proposal for proposal in proposals if proposal["action"] in disabled]
+        tick = data.get("tick", 0)
+        error_rate, queue_depth, db_load = data["error_rate"], data["queue_depth"], data["db_load"]
+        state = ObservableState(
+            tick=tick, error_rate=error_rate, latency=data["latency"],
+            queue_depth=queue_depth, db_load=db_load,
+            topology=MappingProxyType({"services": tuple(DEFAULT_CONFIG["topology"])}),
+            incident_flags=tuple(flag for flag, present in (
+                ("elevated_errors", error_rate > 0.05),
+                ("high_queue", queue_depth > 25),
+                ("db_busy", db_load > 0.8)) if present),
+            action_history=(),
+            service_queues=MappingProxyType(data.get("service_queues", {})),
+        )
+        decision = default_coordinator().plan(state, eligible)
+        reason_by_action = {}
+        for reason in decision.reasons:
+            for proposal in eligible:
+                if proposal["action"] in decision.selected_actions and reason.startswith("Selected " + proposal["action"] + ":"):
+                    reason_by_action[proposal["action"]] = reason
+                elif reason.startswith("Excluded " + proposal["action"] + ":"):
+                    reason_by_action[proposal["action"]] = reason
+        blocked = [{"action": proposal["action"],
+                    "reason": "This action is unavailable in the selected scenario."}
+                   for proposal in faulted_actions]
+        blocked.extend({"action": proposal["action"],
+                        "reason": reason_by_action.get(proposal["action"], "Excluded by the coordinator risk policy.")}
+                       for proposal in eligible
+                       if proposal["action"] not in decision.selected_actions)
+        return self._send(200, {
+            "decision": "allow" if decision.selected_actions else "hold",
+            "allowed_actions": decision.selected_actions,
+            "blocked_actions": blocked,
+            "predicted_risk": decision.predicted_risk,
+            "reasons": decision.reasons,
+            "simulated": True, "measured": False, "external_execution": False,
+        })
 
     def _create_run(self) -> None:
         try:
