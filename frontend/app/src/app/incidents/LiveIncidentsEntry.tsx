@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { api } from '@/lib/api';
 import {
@@ -102,7 +103,7 @@ export function LiveIncidentsEntry() {
       <section className="surface" style={{ padding: 20 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}>
           <h2 style={{ fontSize: 18 }}>Run history</h2>
-          <span style={muted}>every run this backend has executed; click a row to open it</span>
+          <span style={muted}>every run this backend has executed; use Open run to inspect one</span>
         </div>
         {loading ? <p style={muted}>Loading…</p> : runs.length === 0 ? (
           <p style={muted}>No runs yet. Start one above.</p>
@@ -118,21 +119,14 @@ export function LiveIncidentsEntry() {
                   <th style={{ padding: 8 }}>State</th>
                   <th style={{ padding: 8 }}>Failed</th>
                   <th style={{ padding: 8 }}>Actions</th>
+                  <th style={{ padding: 8 }}>Open</th>
                 </tr>
               </thead>
               <tbody>
                 {runs.map((run) => (
-                  <tr key={run.id} tabIndex={0}
-                      aria-label={`Open run ${SCENARIO_LABEL[run.scenario] ?? run.scenario}, ${POLICY_LABEL[run.policy] ?? run.policy}`}
-                      onClick={() => router.push(`/incidents/${run.id}`)}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          router.push(`/incidents/${run.id}`);
-                        }
-                      }}
-                      style={{ borderTop: '1px solid var(--border)', cursor: 'pointer' }}
-                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover, rgba(128,128,128,0.08))')}
+                  <tr key={run.id}
+                      style={{ borderTop: '1px solid var(--border)' }}
+                      onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}
                       onMouseLeave={(e) => (e.currentTarget.style.background = 'transparent')}>
                     <td style={{ padding: 8, fontFamily: 'var(--font-mono)', fontSize: 12 }}>
                       {run.created_at ? new Date(run.created_at).toLocaleString() : '—'}
@@ -148,6 +142,13 @@ export function LiveIncidentsEntry() {
                     <td style={{ padding: 8 }}>
                       {run.metrics?.actions_executed !== undefined
                         ? run.metrics.actions_executed.toLocaleString() : '—'}
+                    </td>
+                    <td style={{ padding: 8 }}>
+                      <Link href={`/incidents/${run.id}`}
+                            aria-label={`Open run ${SCENARIO_LABEL[run.scenario] ?? run.scenario}, ${POLICY_LABEL[run.policy] ?? run.policy}`}
+                            style={{ color: 'var(--accent)', fontWeight: 600, whiteSpace: 'nowrap' }}>
+                        Open run
+                      </Link>
                     </td>
                   </tr>
                 ))}

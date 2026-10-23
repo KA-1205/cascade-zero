@@ -104,10 +104,12 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
     <>
       {/* Sidebar panel */}
       <aside
+        className="app-sidebar"
+        data-open={open}
         style={{
           width: open ? 236 : 60,
           minWidth: open ? 236 : 60,
-          background: 'rgba(252, 251, 249, 0.85)',
+          background: 'var(--bg-sidebar)',
           backdropFilter: 'blur(12px)',
           WebkitBackdropFilter: 'blur(12px)',
           borderRight: '1px solid var(--border)',
@@ -137,8 +139,8 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
               width: 32,
               height: 32,
               borderRadius: 10,
-              background: 'linear-gradient(135deg, #2a9fc0 0%, #6c5fe0 100%)',
-              boxShadow: '0 0 12px 2px rgba(42,159,192,0.28), 0 2px 8px rgba(108,95,224,0.18)',
+              background: 'var(--accent-gradient)',
+              boxShadow: '0 0 12px 2px rgba(114,47,55,0.18), 0 2px 8px rgba(183,168,154,0.25)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
@@ -160,7 +162,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                   fontSize: 14,
                   fontWeight: 800,
                   letterSpacing: '-0.025em',
-                  background: 'linear-gradient(90deg, #1a1714 60%, #5c5650 100%)',
+                  background: 'linear-gradient(90deg, var(--text-primary) 60%, var(--text-secondary) 100%)',
                   WebkitBackgroundClip: 'text',
                   WebkitTextFillColor: 'transparent',
                   whiteSpace: 'nowrap',
@@ -187,6 +189,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
 
         {/* Nav sections */}
         <nav
+          id="cascade-navigation"
           style={{ flex: 1, padding: open ? '16px 10px' : '16px 6px', display: 'flex', flexDirection: 'column', gap: 0, overflowY: 'auto', overflowX: 'hidden' }}
           role="navigation"
           aria-label="Main navigation"
@@ -221,7 +224,11 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                     <Link
                       key={item.href}
                       href={item.href}
+                      aria-label={item.label}
                       aria-current={isActive ? 'page' : undefined}
+                      onClick={() => {
+                        if (window.innerWidth <= 760 && open) onToggle();
+                      }}
                       style={{
                         display: 'flex',
                         alignItems: 'center',
@@ -230,12 +237,12 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                         borderRadius: 9,
                         color: isActive ? 'var(--accent)' : 'var(--text-secondary)',
                         background: isActive
-                          ? 'linear-gradient(90deg, rgba(42,159,192,0.1) 0%, rgba(108,95,224,0.06) 100%)'
+                          ? 'linear-gradient(90deg, rgba(114,47,55,0.09) 0%, rgba(183,168,154,0.16) 100%)'
                           : 'transparent',
                         border: isActive
-                          ? '1px solid rgba(42,159,192,0.18)'
+                          ? '1px solid rgba(114,47,55,0.2)'
                           : '1px solid transparent',
-                        boxShadow: isActive ? '0 1px 4px rgba(42,159,192,0.08)' : 'none',
+                        boxShadow: isActive ? '0 1px 4px rgba(114,47,55,0.08)' : 'none',
                         textDecoration: 'none',
                         fontSize: 13,
                         fontWeight: isActive ? 600 : 400,
@@ -273,7 +280,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                             height: '60%',
                             width: 3,
                             borderRadius: '0 3px 3px 0',
-                            background: 'linear-gradient(180deg, #2a9fc0, #6c5fe0)',
+                            background: 'var(--accent-gradient)',
                           }}
                         />
                       )}
@@ -318,7 +325,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                   width: 6,
                   height: 6,
                   borderRadius: '50%',
-                  background: 'linear-gradient(135deg, #2a9fc0, #6c5fe0)',
+                  background: 'var(--accent-gradient)',
                   flexShrink: 0,
                 }}
               />
@@ -329,6 +336,8 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
           <button
             onClick={onToggle}
             aria-label={open ? 'Collapse sidebar' : 'Expand sidebar'}
+            aria-controls="cascade-navigation"
+            aria-expanded={open}
             style={{
               width: '100%',
               padding: '7px',

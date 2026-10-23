@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, Suspense } from 'react';
+import React, { useEffect, useState, Suspense } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 
@@ -26,13 +26,20 @@ function SidebarFallback({ open }: { open: boolean }) {
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
 
+  useEffect(() => {
+    const syncForViewport = () => setSidebarOpen(window.innerWidth > 760);
+    syncForViewport();
+    window.addEventListener('resize', syncForViewport);
+    return () => window.removeEventListener('resize', syncForViewport);
+  }, []);
+
   return (
     <div
       style={{
         display: 'flex',
         height: '100vh',
         overflow: 'hidden',
-        backgroundColor: 'var(--bg-base)',
+        background: 'transparent',
       }}
     >
       {/* Sidebar — wrapped in Suspense because usePathname() is a runtime hook */}
@@ -50,10 +57,11 @@ export function AppShell({ children }: AppShellProps) {
           overflow: 'hidden',
         }}
       >
-        <Header onMenuToggle={() => setSidebarOpen((v) => !v)} />
+        <Header menuOpen={sidebarOpen} onMenuToggle={() => setSidebarOpen((v) => !v)} />
 
         {/* Page content */}
         <main
+          className="app-main-content"
           style={{
             flex: 1,
             overflowY: 'auto',

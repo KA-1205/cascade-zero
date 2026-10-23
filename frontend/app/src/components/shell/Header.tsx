@@ -5,9 +5,10 @@ import { api } from '@/lib/api';
 
 interface HeaderProps {
   onMenuToggle: () => void;
+  menuOpen: boolean;
 }
 
-export function Header({ onMenuToggle }: HeaderProps) {
+export function Header({ onMenuToggle, menuOpen }: HeaderProps) {
   const [currentTime, setCurrentTime] = useState<string>('');
   const [runId, setRunId] = useState<string>('No run selected');
   const [apiLive, setApiLive] = useState(false);
@@ -61,7 +62,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
         height: 60,
         backgroundColor: 'var(--bg-surface)',
         borderBottom: '1px solid var(--border)',
-        boxShadow: '0 1px 0 0 rgba(42,159,192,0.10), 0 4px 20px 0 rgba(42,159,192,0.03)',
+        boxShadow: '0 1px 0 0 rgba(114,47,55,0.08), 0 4px 20px 0 rgba(114,47,55,0.035)',
         display: 'flex',
         alignItems: 'center',
         gap: 12,
@@ -73,10 +74,12 @@ export function Header({ onMenuToggle }: HeaderProps) {
     >
       {/* Menu toggle for mobile */}
       <button
+        className="header-menu-toggle"
         onClick={onMenuToggle}
         aria-label="Toggle menu"
+        aria-controls="cascade-navigation"
+        aria-expanded={menuOpen}
         style={{
-          display: 'none', // hidden on desktop via media — CSS handles it
           width: 32,
           height: 32,
           borderRadius: 6,
@@ -95,6 +98,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
 
       {/* Run info */}
       <div
+        className="header-run-info"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -117,9 +121,10 @@ export function Header({ onMenuToggle }: HeaderProps) {
         </span>
         <span style={{ color: 'var(--border)', margin: '0 2px' }}>·</span>
         <span
+          className="header-run-info-label"
           style={{
             fontWeight: 500,
-            background: 'linear-gradient(90deg, #2a9fc0, #6c5fe0)',
+            background: 'var(--accent-gradient)',
             WebkitBackgroundClip: 'text',
             WebkitTextFillColor: 'transparent',
           }}
@@ -133,6 +138,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
 
       {/* This is the local simulator connection, not a production system. */}
       <div
+        className="header-connection"
         style={{
           display: 'flex',
           alignItems: 'center',
@@ -151,19 +157,20 @@ export function Header({ onMenuToggle }: HeaderProps) {
             animation: apiLive ? undefined : 'none',
           }}
         />
-        <span>{apiLive ? 'Simulator connected' : 'Simulator offline'}</span>
+        <span className="header-connection-label">{apiLive ? 'Simulator connected' : 'Simulator offline'}</span>
       </div>
 
       <div style={{ width: 1, height: 20, backgroundColor: 'var(--border)' }} />
 
       {/* Environment badge */}
       <div
+        className="header-env-badge"
         style={{
           padding: '3px 8px',
           borderRadius: 6,
-          backgroundColor: 'var(--accent-muted, rgba(42, 159, 192, 0.12))',
-          border: '1px solid var(--accent, #2a9fc0)',
-          color: 'var(--accent, #2a9fc0)',
+          backgroundColor: 'var(--accent-muted)',
+          border: '1px solid var(--accent)',
+          color: 'var(--accent)',
           fontSize: 11,
           fontWeight: 600,
           letterSpacing: '0.05em',
@@ -175,6 +182,7 @@ export function Header({ onMenuToggle }: HeaderProps) {
 
       {/* Clock */}
       <div
+        className="header-clock"
         style={{
           fontFamily: 'var(--font-mono)',
           fontSize: 12,
