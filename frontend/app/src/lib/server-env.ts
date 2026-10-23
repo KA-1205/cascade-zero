@@ -1,9 +1,5 @@
-import { existsSync, readFileSync } from 'node:fs';
-import { resolve } from 'node:path';
-
 /**
- * Parse dotenv file contents into key/value pairs. Shared by the Next config
- * and the server routes so both read .env files exactly the same way.
+ * Parse dotenv file contents into key/value pairs for next.config.ts.
  * Surrounding quotes are stripped per dotenv convention; comments and lines
  * without `=` are skipped.
  */
@@ -21,22 +17,4 @@ export function parseEnvFile(contents: string): Array<[string, string]> {
     if (key && value) entries.push([key, value]);
   }
   return entries;
-}
-
-let loaded = false;
-
-/**
- * Load the repo-root .env into process.env for server routes. Called by the
- * approval/backtest proxies so the sandbox token works regardless of how the
- * dev server was started. Values already in the environment win.
- */
-export function loadRootEnv(): void {
-  if (loaded) return;
-  loaded = true;
-  for (const candidate of [resolve(process.cwd(), '../../.env'), resolve(process.cwd(), '.env')]) {
-    if (!existsSync(candidate)) continue;
-    for (const [key, value] of parseEnvFile(readFileSync(candidate, 'utf8'))) {
-      if (process.env[key] === undefined) process.env[key] = value;
-    }
-  }
 }

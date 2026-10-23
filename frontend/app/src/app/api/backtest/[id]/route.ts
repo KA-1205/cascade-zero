@@ -1,9 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadRootEnv } from '@/lib/server-env';
 
 /** Same-origin proxy for plan backtests; the sandbox token never reaches the browser. */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  loadRootEnv();
   const token = process.env.CASCADE_APPROVAL_TOKEN;
   if (!token) return NextResponse.json({ error: 'Approval token is not configured' }, { status: 503 });
   const { id } = await params;

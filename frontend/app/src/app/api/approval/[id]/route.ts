@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { loadRootEnv } from '@/lib/server-env';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
-  loadRootEnv();
   const token = process.env.CASCADE_APPROVAL_TOKEN;
   const key = request.headers.get('Idempotency-Key');
   if (!token) return NextResponse.json({ error: 'Sandbox approval token is not configured' }, { status: 503 });
