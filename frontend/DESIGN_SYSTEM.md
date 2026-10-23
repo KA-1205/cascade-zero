@@ -6,7 +6,8 @@ using them; the CSS is the source of truth for values.
 
 ## Foundations
 
-- **Theme**: warm light palette (cream/off-white surfaces, near-black text).
+- **Theme**: mocha cream gradient base, cosmic latte highlights, deep burgundy
+  for primary actions and active navigation, warm dark-brown text.
   No dark-mode variant yet; every color must come from a CSS variable so one
   can be added later without touching components.
 - **Type**: `--font-sans` is Plus Jakarta Sans (UI text); `--font-mono` is
@@ -16,9 +17,10 @@ using them; the CSS is the source of truth for values.
   in page grids is 18px.
 - **Radius**: `--radius-card` 12px (cards), `--radius-badge` 6px,
   `--radius-button` 8px.
-- **Accent**: the cyan→violet pair `--accent` (#2a9fc0) → `--accent-end`
-  (#6c5fe0). Use `--accent-gradient` for brand moments (logo, active nav);
-  plain `--accent` for links and primary buttons.
+- **Palette**: mocha cream `#E8DCC6`, cosmic latte `#B7A89A`, and deep
+  burgundy `#722F37`. The background combines mocha cream gradients and
+  cosmic latte highlights. Use burgundy for links, primary buttons, and active
+  navigation; use the restrained burgundy-to-latte gradient for brand marks.
 
 ## Status colors
 

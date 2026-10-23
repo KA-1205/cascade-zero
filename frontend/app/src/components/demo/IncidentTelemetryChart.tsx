@@ -36,16 +36,16 @@ export function IncidentTelemetryChart({ events }: { events: CascadeEvent[] }) {
           <YAxis yAxisId="error" orientation="right" tick={{ fontSize: 11 }}
                  stroke="rgba(128,128,128,0.6)" unit="%"
                  label={{ value: 'errors', angle: 90, position: 'insideRight', fontSize: 10 }} />
-          <Tooltip contentStyle={{ fontSize: 12, background: 'var(--bg-surface, #1c1c22)' }} />
+          <Tooltip contentStyle={{ fontSize: 12, background: 'var(--bg-elevated)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
           <Legend wrapperStyle={{ fontSize: 12 }} />
           {actionTicks.map((tick) => (
             <ReferenceLine key={tick} x={tick} yAxisId="error"
-                           stroke="#f5a524" strokeOpacity={0.45} />
+                           stroke="var(--warning)" strokeOpacity={0.55} />
           ))}
           <Line yAxisId="backlog" dataKey="queue" name="Backlog (queued requests)"
-                stroke="#2a9fc0" dot={false} strokeWidth={2} />
+                stroke="var(--accent)" dot={false} strokeWidth={2} />
           <Line yAxisId="error" dataKey="error" name="Error rate (%)"
-                stroke="#e5484d" dot={false} strokeWidth={2} />
+                stroke="var(--danger)" dot={false} strokeWidth={2} />
         </ComposedChart>
       </ResponsiveContainer>
     </div>

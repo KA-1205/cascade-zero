@@ -5,33 +5,33 @@
  */
 export const tokens = {
   color: {
-    bgBase: '#0B1220',
-    bgSurface: '#111D2E',
-    bgElevated: '#192337',
-    bgHover: '#1E2B40',
-    border: '#26344A',
-    borderSubtle: '#1C2A3D',
+    bgBase: '#E8DCC6',
+    bgSurface: '#F7F0E5',
+    bgElevated: '#FFFAF2',
+    bgHover: '#E4D5C0',
+    border: '#D3C1AA',
+    borderSubtle: '#E4D8C7',
     
-    textPrimary: '#EAF1FA',
-    textSecondary: '#91A3BB',
-    textMuted: '#5A7090',
-    textInverse: '#0B1220',
+    textPrimary: '#352729',
+    textSecondary: '#59484A',
+    textMuted: '#6E5E59',
+    textInverse: '#FFFAF2',
 
-    accent: '#52B8DB',
-    accentHover: '#6BC8E8',
-    accentMuted: '#52B8DB22',
+    accent: '#722F37',
+    accentHover: '#5D252D',
+    accentMuted: '#722F3718',
 
-    success: '#3BBE8B',
-    successMuted: '#3BBE8B22',
-    warning: '#E7AD53',
-    warningMuted: '#E7AD5322',
-    danger: '#F07178',
-    dangerMuted: '#F0717822',
-    unknown: '#8B9CB0',
-    unknownMuted: '#8B9CB022',
+    success: '#247A57',
+    successMuted: '#247A5718',
+    warning: '#9A6417',
+    warningMuted: '#9A641718',
+    danger: '#A43B43',
+    dangerMuted: '#A43B4318',
+    unknown: '#6E5E59',
+    unknownMuted: '#6E5E5918',
 
     /** Capacity danger threshold line on charts */
-    capacityLimit: '#F07178',
+    capacityLimit: '#A43B43',
   },
   font: {
     sans: 'Inter, ui-sans-serif, system-ui, sans-serif',
@@ -47,8 +47,8 @@ export const tokens = {
     unit: '8px',
   },
   shadow: {
-    card: '0 1px 3px 0 rgba(0,0,0,0.4)',
-    elevated: '0 4px 12px 0 rgba(0,0,0,0.5)',
+    card: '0 1px 3px 0 rgba(53,39,41,0.06)',
+    elevated: '0 4px 12px 0 rgba(53,39,41,0.1)',
   },
 } as const;
 
@@ -78,10 +78,10 @@ export const policyLabel = {
 
 /** Policy colors for multi-line charts (also uses dash pattern — not color alone) */
 export const policyColor = {
-  none: '#91A3BB',
-  independent: '#F07178',
-  guardrails: '#E7AD53',
-  coordinated: '#52B8DB',
+  none: '#6E5E59',
+  independent: '#A43B43',
+  guardrails: '#9A6417',
+  coordinated: '#722F37',
 } as const;
 
 export const policyDash = {

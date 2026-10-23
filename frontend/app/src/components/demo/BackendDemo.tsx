@@ -457,7 +457,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
                     return <div key={node.id} style={{
                       padding: 12, borderRadius: 8,
                       border: `1px solid ${faulted ? 'var(--warning)' : 'var(--border)'}`,
-                      background: faulted ? 'rgba(245, 165, 36, 0.07)' : undefined,
+                      background: faulted ? 'var(--warning-muted)' : undefined,
                     }}>
                       <strong>{node.id}</strong>
                       {faulted && <span style={{ ...muted, marginLeft: 6, color: 'var(--warning)' }}>· faulted here</span>}
