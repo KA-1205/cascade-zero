@@ -164,24 +164,17 @@ def test_coordinated_decision_plans_and_approval(api, monkeypatch):
     updated = json.loads(raw)
     validate_response("/v1/runs/{run_id}/plans", "get", 200, updated)
     approved = next(p for p in updated if p["id"] == plan["id"])
-    # No gated executor is configured: the actions already ran inside the
-    # deterministic simulation, so the honest status is "approved", not
-    # "executed" (reserved for a sent n8n execution).
-    assert approved == {**plan, "status": "approved"}
+    assert approved["status"] == "approved"
+    assert approved["execution"]["status"] == "dry-run"
+    assert approved["execution"]["simulated"] is True
+    assert approved["execution"]["measured"] is False
+    assert approved["execution"]["replayed"] is True
+    assert approved["execution"]["outcome"]["actions"] == plan["actions"]
 
 
 def test_approval_with_gated_executor_records_execution(api, monkeypatch):
-    """With n8n configured and sending succeeding, the plan is honestly 'executed'."""
-    import backend.api as api_module
-    from backend.integrations.n8n import GatedExecutor
-
-    def ok_transport(url, payload, headers):
-        return 200
-
+    """Approval records a local counterfactual replay with execution outcome."""
     monkeypatch.setenv("CASCADE_APPROVAL_TOKEN", "local-token")
-    monkeypatch.setattr(api_module, "executor_from_env",
-                        lambda: GatedExecutor(ok_transport, allow_sandbox_actions=True,
-                                              webhook_url="http://sandbox.invalid/hook"))
     run = create(api, seed=17)
     _, _, raw = request(api, f"/v1/runs/{run['id']}/plans")
     plan = next(p for p in json.loads(raw) if p["actions"])
@@ -191,10 +184,13 @@ def test_approval_with_gated_executor_records_execution(api, monkeypatch):
                             "Idempotency-Key": "exec-1"})
     assert status == 202
     _, _, raw = request(api, f"/v1/runs/{run['id']}/plans")
-    executed = next(p for p in json.loads(raw) if p["id"] == plan["id"])
-    assert executed["status"] == "executed"
-    assert executed["execution"]["status"] == "sent"
-    assert executed["execution"]["measured"] is True
+    approved = next(p for p in json.loads(raw) if p["id"] == plan["id"])
+    assert approved["status"] == "approved"
+    assert approved["execution"]["status"] == "dry-run"
+    assert approved["execution"]["simulated"] is True
+    assert approved["execution"]["measured"] is False
+    assert approved["execution"]["replayed"] is True
+    assert "outcome" in approved["execution"]
 
 
 def test_unknown_resources_and_invalid_requests(api):

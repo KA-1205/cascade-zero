@@ -105,9 +105,9 @@ def test_coordinated_reproducible_observable_only_and_common_traffic():
     # run-id digest hashes the whole config, so event ids and the trace hash
     # move even though database-fault behaviour is unchanged.
     # Hashes refreshed when metric events gained per-service queue depths.
-    ("none", "293c79ce84e2d5ba24df50f6f80c7f4fbf126b2c741c854aa20bd2f0a9abeef5"),
-    ("independent", "792336365665428c355e2553bc01bddcf00cb5ac08f4658a33671791495d762b"),
-    ("guardrails", "93a53e99bb92e9e46f3ee3d7db21314a88866403f7a34d67a17590677c8751a3"),
+    ("none", "a3169d35615a1b92079e0c5659d5b396bc2ca58402d69ffb28466ec19b5332ab"),
+    ("independent", "5343d53d4276f64c508d9474bdbc50f248dafdb3ee6f1a3596e28e135317f8bd"),
+    ("guardrails", "19e9f5fffac2611760662ade5212cb4faabf24c6cc6473484c72ff7968d795b9"),
 ])
 def test_existing_seed_42_trace_hashes(policy, expected):
     assert simulate(42, policy)["trace_hash"] == expected

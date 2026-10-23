@@ -21,7 +21,7 @@ def _states(seed, overlay, ticks=None):
 
 
 def test_scenario_registry_and_unknown_name():
-    assert set(SCENARIOS) == {"db_slowdown", "payments_degradation", "traffic_surge"}
+    assert set(SCENARIOS) == {"db_slowdown", "payments_degradation", "traffic_surge", "telemetry_faults"}
     with pytest.raises(ValueError, match="unknown scenario"):
         scenario_overlay("cache_stampede")
 

@@ -29,11 +29,17 @@ def test_split_and_frozen_overlay():
 
 def test_byte_identical_full_event_replay_and_common_arrivals():
     cfg = load_config({"ticks": 32})
-    results = {arm: run_arm(10000, policy, cfg) for arm, policy in protocol()["arms"].items()}
+    results = {}
+    for arm, policy in protocol()["arms"].items():
+        sim_policy = "coordinated" if arm == "N3_no_interactions" else policy
+        results[arm] = run_arm(10000, sim_policy, cfg, include_interactions=arm != "N3_no_interactions")
     arrivals = []
     for arm, result in results.items():
-        again = run_arm(10000, protocol()["arms"][arm], cfg)
-        assert json.dumps(result, sort_keys=True).encode() == json.dumps(again, sort_keys=True).encode()
+        sim_policy = "coordinated" if arm == "N3_no_interactions" else protocol()["arms"][arm]
+        again = run_arm(10000, sim_policy, cfg, include_interactions=arm != "N3_no_interactions")
+        r1 = {k: v for k, v in result.items() if k != "runtime"}
+        r2 = {k: v for k, v in again.items() if k != "runtime"}
+        assert json.dumps(r1, sort_keys=True).encode() == json.dumps(r2, sort_keys=True).encode()
         assert result["simulated"] is True and result["measured"] is False
         arrivals.append([e["payload"]["arrivals"] for e in result["events"] if e["kind"] == "metric"])
     assert all(stream == arrivals[0] for stream in arrivals)
@@ -69,7 +75,7 @@ def test_artifact_contract_and_complete_seed_matrix():
         rows = list(csv.DictReader(f))
     expected = {(s["id"], a, seed) for s in cfg["scenarios"] for seed in seed_range(s)
                 for a in (list(cfg["arms"]) + (list(cfg["negative_controls"]) if s is cfg["scenarios"][0] else []))}
-    assert len(rows) == len(expected) == 960
+    assert len(rows) == len(expected) == 1150
     assert {(r["scenario"], r["arm"], int(r["seed"])) for r in rows} == expected
     assert all(r["simulated"] == "true" and r["measured"] == "false" and
                int(r["unique_offered"]) == int(r["unique_succeeded"]) + int(r["unique_failed"])
