@@ -3,6 +3,7 @@
 import React, { useEffect, useState, Suspense } from 'react';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
+import { SimBanner } from './SimBanner';
 
 interface AppShellProps {
   children: React.ReactNode;
@@ -34,44 +35,49 @@ export function AppShell({ children }: AppShellProps) {
   }, []);
 
   return (
-    <div
-      className="app-shell"
-      style={{
-        display: 'flex',
-        height: '100vh',
-        overflow: 'hidden',
-        background: 'transparent',
-      }}
-    >
-      {/* Sidebar — wrapped in Suspense because usePathname() is a runtime hook */}
-      <Suspense fallback={<SidebarFallback open={sidebarOpen} />}>
-        <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen((v) => !v)} />
-      </Suspense>
-
-      {/* Main area */}
+    <div className="app-frame">
+      <a className="skip-link" href="#main-content">Skip to main content</a>
+      <SimBanner />
       <div
+        className="app-shell"
         style={{
-          flex: 1,
           display: 'flex',
-          flexDirection: 'column',
-          minWidth: 0,
+          height: '100vh',
           overflow: 'hidden',
+          background: 'transparent',
         }}
       >
-        <Header menuOpen={sidebarOpen} onMenuToggle={() => setSidebarOpen((v) => !v)} />
+        {/* Sidebar — wrapped in Suspense because usePathname() is a runtime hook */}
+        <Suspense fallback={<SidebarFallback open={sidebarOpen} />}>
+          <Sidebar open={sidebarOpen} onToggle={() => setSidebarOpen((v) => !v)} />
+        </Suspense>
 
-        {/* Page content */}
-        <main
-          className="app-main-content"
+        {/* Main area */}
+        <div
           style={{
             flex: 1,
-            overflowY: 'auto',
-            overflowX: 'hidden',
-            padding: '24px',
+            display: 'flex',
+            flexDirection: 'column',
+            minWidth: 0,
+            overflow: 'hidden',
           }}
         >
-          {children}
-        </main>
+          <Header menuOpen={sidebarOpen} onMenuToggle={() => setSidebarOpen((v) => !v)} />
+
+          {/* Page content */}
+          <div
+            className="app-main-content"
+            id="main-content"
+            style={{
+              flex: 1,
+              overflowY: 'auto',
+              overflowX: 'hidden',
+              padding: '24px',
+            }}
+          >
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );

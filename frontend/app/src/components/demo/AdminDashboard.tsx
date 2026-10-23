@@ -54,15 +54,19 @@ export function AdminDashboard() {
     : null;
 
   return (
-    <main style={{ maxWidth: 1300, display: 'grid', gap: 18 }}>
-      <div>
-        <h1 style={{ fontSize: 26, color: 'var(--text-primary)', marginBottom: 4 }}>Project Admin</h1>
-        <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-          Everything the system has done, updated whenever a run finishes.
-        </p>
+    <main className="console-page console-page--admin">
+      <div className="page-heading">
+        <div>
+          <p className="page-eyebrow">CASCADE ZERO <span aria-hidden="true">/</span> SYSTEM HEALTH</p>
+          <h1>Project Admin</h1>
+          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
+            Everything the system has done, updated whenever a run finishes.
+          </p>
+        </div>
+        <span className="page-mode-tag"><span aria-hidden="true" /> Local simulator</span>
       </div>
 
-      <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
+      <section className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
         <KpiCard label="Runs executed" value={status.runs.total}
                   context={`${status.runs.by_state.completed ?? 0} completed · ${status.runs.by_state.running ?? 0} running`} />
         <KpiCard label="Transactions protected" value={status.transactions.succeeded.toLocaleString()}
@@ -75,7 +79,7 @@ export function AdminDashboard() {
                   tone={ai.provider_configured ? (liveRate !== null && liveRate > 0 ? 'good' : 'warn') : 'bad'} />
       </section>
 
-      <section className="surface" style={{ padding: 20 }}>
+      <section className="surface dashboard-panel" style={{ padding: 20 }}>
         <SectionHeader index="01" title="System status" subtitle="Backend and provider health right now." />
         <LabeledRow label="Backend API">
           <span style={{ color: 'var(--success)', fontWeight: 600 }}>● healthy</span>
@@ -89,7 +93,7 @@ export function AdminDashboard() {
         <LabeledRow label="Default model">{ai.model}</LabeledRow>
       </section>
 
-      <section className="surface" style={{ padding: 20 }}>
+      <section className="surface dashboard-panel" style={{ padding: 20 }}>
         <SectionHeader index="02" title="AI engine" subtitle="How the decision engine has been performing." />
         <LabeledRow label="Live model decisions">{ai.live_decisions.toLocaleString()}</LabeledRow>
         <LabeledRow label="Labeled fallback decisions">{ai.fallback_decisions.toLocaleString()}</LabeledRow>
@@ -101,7 +105,7 @@ export function AdminDashboard() {
         )}
       </section>
 
-      <section className="surface" style={{ padding: 20 }}>
+      <section className="surface dashboard-panel" style={{ padding: 20 }}>
         <SectionHeader index="03" title="Recent activity" subtitle="The latest runs, newest first." />
         {runs.slice(0, 8).map((run) => (
           <LabeledRow key={run.id} label={
@@ -120,7 +124,7 @@ export function AdminDashboard() {
         {runs.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No runs yet.</p>}
       </section>
 
-      <section className="surface" style={{ padding: 20 }}>
+      <section className="surface dashboard-panel" style={{ padding: 20 }}>
         <SectionHeader index="04" title="Scenarios & policies" subtitle="What can be simulated, and what each policy means." />
         {Object.entries(status.scenarios).map(([name, config]) => (
           <LabeledRow key={name} label={SCENARIO_LABEL[name as keyof typeof SCENARIO_LABEL] ?? name}>

@@ -37,3 +37,18 @@ export const SCENARIO_BLURB: Record<RunScenario, string> = {
   traffic_surge: 'A sustained wave of traffic overwhelms the gateway and services before any fault exists.',
   telemetry_faults: 'The simulator generates delayed, noisy, and occasionally dropped readings while actual transaction outcomes remain separate.',
 };
+
+const ACTION_LABEL: Record<string, string> = {
+  increase_retries: 'Increase retries',
+  add_replicas: 'Add replicas',
+  restart_service: 'Restart service',
+};
+
+export function actionLabel(action: string): string {
+  return ACTION_LABEL[action]
+    ?? action.replaceAll('_', ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
+}
+
+export function actionListLabel(actions: string[]): string {
+  return actions.length ? actions.map(actionLabel).join(' + ') : 'Hold action';
+}

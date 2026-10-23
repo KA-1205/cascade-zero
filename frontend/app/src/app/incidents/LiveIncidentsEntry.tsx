@@ -60,7 +60,7 @@ export function LiveIncidentsEntry() {
   }
 
   const input: React.CSSProperties = { padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-elevated)' };
-  const button: React.CSSProperties = { border: 0, borderRadius: 8, background: 'var(--accent)', color: '#fff', padding: '10px 14px', cursor: 'pointer', fontWeight: 600 };
+  const button: React.CSSProperties = { border: 0, borderRadius: 8, background: 'var(--accent)', color: 'var(--bg-elevated)', padding: '10px 14px', cursor: 'pointer', fontWeight: 600 };
   const muted: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 13 };
   const stateColor: Record<string, string> = {
     completed: 'var(--success)', running: 'var(--warning)',
@@ -68,11 +68,19 @@ export function LiveIncidentsEntry() {
   };
 
   return (
-    <div style={{ maxWidth: 1100, display: 'grid', gap: 18 }}>
-      <section className="surface" style={{ padding: 20, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
+    <main className="console-page console-page--incidents">
+      <div className="page-heading">
+        <div>
+          <p className="page-eyebrow">CASCADE ZERO <span aria-hidden="true">/</span> INCIDENT WORKSPACE</p>
+          <h1>Simulate an incident</h1>
+          <p style={muted}>Choose a fault and policy. The telemetry is generated and repeatable; the operator controls every proposed recovery action.</p>
+        </div>
+        <span className="page-mode-tag"><span aria-hidden="true" /> No production connection</span>
+      </div>
+      <section className="incident-setup-panel" style={{ padding: 22, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 240 }}>
-          <strong>Simulate an incident</strong>
-          <div style={muted}>Synthetic telemetry creates a repeatable scenario. The policy diagnoses the incident and proposes actions; you decide what happens next.</div>
+          <strong>Configure the scenario</strong>
+          <div style={muted}>Adjust the seed to replay the same conditions or generate a new telemetry pattern.</div>
         </div>
         <label style={muted}>Seed
           <input type="number" min="0" value={seed}
@@ -100,7 +108,7 @@ export function LiveIncidentsEntry() {
         </div>
       )}
 
-      <section className="surface" style={{ padding: 20 }}>
+      <section className="surface run-history-panel" style={{ padding: 20 }}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}>
           <h2 style={{ fontSize: 18 }}>Run history</h2>
           <span style={muted}>every run this backend has executed; use Open run to inspect one</span>
@@ -157,6 +165,6 @@ export function LiveIncidentsEntry() {
           </div>
         )}
       </section>
-    </div>
+    </main>
   );
 }

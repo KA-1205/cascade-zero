@@ -12,33 +12,34 @@ export const tokens = {
     border: '#D3C1AA',
     borderSubtle: '#E4D8C7',
     
-    textPrimary: '#352729',
-    textSecondary: '#59484A',
-    textMuted: '#6E5E59',
+    textPrimary: '#302427',
+    textSecondary: '#403438',
+    textMuted: '#3B3133',
     textInverse: '#FFFAF2',
 
     accent: '#722F37',
+    accentInk: '#4B252C',
     accentHover: '#5D252D',
     accentMuted: '#722F3718',
 
     success: '#247A57',
     successMuted: '#247A5718',
-    warning: '#9A6417',
-    warningMuted: '#9A641718',
+    warning: '#88570F',
+    warningMuted: '#88570F18',
     danger: '#A43B43',
     dangerMuted: '#A43B4318',
-    unknown: '#6E5E59',
-    unknownMuted: '#6E5E5918',
+    unknown: '#3B3133',
+    unknownMuted: '#3B313318',
 
     /** Capacity danger threshold line on charts */
     capacityLimit: '#A43B43',
   },
   font: {
-    sans: 'Inter, ui-sans-serif, system-ui, sans-serif',
-    mono: '"JetBrains Mono", ui-monospace, "Cascadia Code", monospace',
+    sans: 'Inter, "Segoe UI", ui-sans-serif, system-ui, sans-serif',
+    mono: '"Cascadia Code", "SFMono-Regular", ui-monospace, monospace',
   },
   radius: {
-    card: '12px',
+    card: '10px',
     badge: '6px',
     button: '8px',
     full: '9999px',
@@ -78,9 +79,9 @@ export const policyLabel = {
 
 /** Policy colors for multi-line charts (also uses dash pattern — not color alone) */
 export const policyColor = {
-  none: '#6E5E59',
+  none: '#3B3133',
   independent: '#A43B43',
-  guardrails: '#9A6417',
+  guardrails: '#88570F',
   coordinated: '#722F37',
 } as const;
 

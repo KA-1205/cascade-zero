@@ -8,14 +8,14 @@ using them; the CSS is the source of truth for values.
 
 - **Theme**: cosmic latte desktop canvas with restrained mocha cream light,
   deep burgundy for the sandbox banner, primary actions, and active navigation.
-  No dark-mode variant yet; every color must come from a CSS variable so one
-  can be added later without touching components.
-- **Type**: `--font-sans` is Plus Jakarta Sans (UI text); `--font-mono` is
-  JetBrains Mono (ids, seeds, numbers, code). Numbers in dashboards use
+  No dark-mode variant yet; new visual rules should use semantic CSS tokens.
+- **Type**: `--font-sans` uses a system UI stack; `--font-mono` uses a system
+  monospace stack for ids, seeds, numbers, and code. The interface does not
+  depend on a remote font request. Numbers in dashboards use
   `font-variant-numeric: tabular-nums`.
-- **Spacing**: `--space` is the 8px base. Card padding is 20px; section gap
-  in page grids is 18px.
-- **Radius**: `--radius-card` 12px (cards), `--radius-badge` 6px,
+- **Spacing**: `--space` is the 8px base. Card padding is 20–22px; section gap
+  in page grids is 22px.
+- **Radius**: `--radius-card` 10px (cards), `--radius-badge` 6px,
   `--radius-button` 8px.
 - **Palette**: cosmic latte `#B7A89A` background, mocha cream `#E8DCC6`
   highlights, and deep burgundy `#722F37`. Use the darker `--accent-ink` for

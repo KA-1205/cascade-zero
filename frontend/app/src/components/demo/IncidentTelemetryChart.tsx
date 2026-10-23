@@ -28,13 +28,13 @@ export function IncidentTelemetryChart({ events }: { events: CascadeEvent[] }) {
     <div style={{ width: '100%', height: 260 }}>
       <ResponsiveContainer>
         <ComposedChart data={points} margin={{ top: 8, right: 8, bottom: 0, left: 0 }}>
-          <CartesianGrid strokeDasharray="3 3" stroke="rgba(128,128,128,0.25)" />
-          <XAxis dataKey="tick" tick={{ fontSize: 11 }} stroke="rgba(128,128,128,0.6)"
+          <CartesianGrid strokeDasharray="3 3" stroke="var(--border-subtle)" />
+          <XAxis dataKey="tick" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} stroke="var(--border)"
                  label={{ value: 'tick', position: 'insideBottomRight', fontSize: 10, offset: -2 }} />
-          <YAxis yAxisId="backlog" tick={{ fontSize: 11 }} stroke="rgba(128,128,128,0.6)"
+          <YAxis yAxisId="backlog" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }} stroke="var(--border)"
                  label={{ value: 'backlog', angle: -90, position: 'insideLeft', fontSize: 10 }} />
-          <YAxis yAxisId="error" orientation="right" tick={{ fontSize: 11 }}
-                 stroke="rgba(128,128,128,0.6)" unit="%"
+          <YAxis yAxisId="error" orientation="right" tick={{ fontSize: 11, fill: 'var(--text-secondary)' }}
+                 stroke="var(--border)" unit="%"
                  label={{ value: 'errors', angle: 90, position: 'insideRight', fontSize: 10 }} />
           <Tooltip contentStyle={{ fontSize: 12, background: 'var(--bg-elevated)', borderColor: 'var(--border)', color: 'var(--text-primary)' }} />
           <Legend wrapperStyle={{ fontSize: 12 }} />

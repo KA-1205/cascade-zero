@@ -5,8 +5,10 @@ import Link from 'next/link';
 import { api } from '@/lib/api';
 import {
   POLICIES, POLICY_LABEL, POLICY_BLURB, SCENARIOS, SCENARIO_LABEL, SCENARIO_BLURB,
+  actionLabel, actionListLabel,
 } from '@/lib/labels';
 import { IncidentTelemetryChart } from './IncidentTelemetryChart';
+import { AiOverviewPanel } from './AiOverviewPanel';
 import { KpiCard, SectionHeader } from '@/components/ui/kit';
 import type {
   AIProbeOutcome, BacktestResult, CascadeEvent, DecisionEvent,
@@ -16,9 +18,9 @@ import type {
 type View = 'overview' | 'incident' | 'plans' | 'experiments' | 'audit';
 const KEY = 'cascade-demo-run-id';
 const SEED = 42;
-const card: React.CSSProperties = { background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 12, padding: 20 };
+const card: React.CSSProperties = { background: 'var(--bg-surface)', border: '1px solid var(--border)', borderRadius: 10, padding: 20 };
 const muted: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 13, lineHeight: 1.6 };
-const action: React.CSSProperties = { border: 0, borderRadius: 8, background: 'var(--accent)', color: '#fff', padding: '10px 14px', cursor: 'pointer', fontWeight: 600 };
+const action: React.CSSProperties = { border: 0, borderRadius: 8, background: 'var(--accent)', color: 'var(--bg-elevated)', padding: '10px 14px', cursor: 'pointer', fontWeight: 600 };
 const ghost: React.CSSProperties = { ...action, background: 'transparent', color: 'var(--accent)', border: '1px solid var(--accent)' };
 const chip: React.CSSProperties = { display: 'inline-block', borderRadius: 999, padding: '2px 10px', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em' };
 const input: React.CSSProperties = { padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-elevated)' };
@@ -150,6 +152,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
         || event.payload.actions.length > 0
         || Boolean(info.fallback_reason);
     }), [decisions]);
+  const latestAiDecision = aiDecisions.at(-1);
   const latestChecks = (() => {
     for (let index = decisions.length - 1; index >= 0; index -= 1) {
       const info = decisions[index].payload.ai;
@@ -271,27 +274,40 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
   }, [decisions, executions]);
 
   return (
-    <main style={{ maxWidth: 1300, display: 'grid', gap: 18 }}>
-      <div>
-        <h1 style={{ fontSize: 26, color: 'var(--text-primary)', marginBottom: 4 }}>{title}</h1>
-        <p style={muted}>{explanation}</p>
+    <main className={`console-page console-page--${view}`}>
+      <div className="page-heading">
+        <div>
+          <p className="page-eyebrow">CASCADE ZERO <span aria-hidden="true">/</span> {view.toUpperCase()}</p>
+          <h1>{title}</h1>
+          <p style={muted}>{explanation}</p>
+        </div>
+        <span className="page-mode-tag"><span aria-hidden="true" /> Simulated environment</span>
       </div>
       {error && <div role="alert" style={{ ...card, borderColor: 'var(--danger)', color: 'var(--danger)' }}>{error}. Start the backend with <code>python -m backend.api</code> and reload.</div>}
       {!run && !error && !noRun && <div style={card}>Loading a backend run…</div>}
       {!run && !error && noRun && (
-        <section style={{ ...card, display: 'grid', gap: 14, justifyItems: 'center', padding: '48px 24px', textAlign: 'center' }}>
-          <h2 style={{ fontSize: 22, margin: 0, color: 'var(--text-primary)' }}>Nothing has run yet</h2>
-          <p style={{ ...muted, maxWidth: 520 }}>
-            Start a run from the Incidents tab: pick a scenario (what breaks), a policy (who
-            decides how to fix it) and a seed. The pages here fill in as soon as a run exists.
-          </p>
-          <Link href="/incidents" style={{ ...action, textDecoration: 'none', display: 'inline-block' }}>Start an incident →</Link>
+        <section className="empty-state" aria-labelledby="empty-state-title">
+          <div className="empty-state-copy">
+            <p className="page-eyebrow">OPERATOR CONTROL · SIMULATION ONLY</p>
+            <h2 id="empty-state-title">Diagnose the incident before recovery begins.</h2>
+            <p>
+              Cascade Zero reads generated telemetry, explains the likely cause, and proposes
+              guarded recovery actions. You choose whether to approve a local replay, compare it
+              in the Experiment Lab, or reject it. No production system is connected.
+            </p>
+          </div>
+          <ol className="workflow-steps" aria-label="Operator workflow">
+            <li><span>01</span><strong>Generate telemetry</strong><small>Choose a scenario and repeatable seed.</small></li>
+            <li><span>02</span><strong>Review the diagnosis</strong><small>See evidence, confidence, and risk.</small></li>
+            <li><span>03</span><strong>Choose the outcome</strong><small>Approve, experiment, or reject.</small></li>
+          </ol>
+          <Link href="/incidents" className="primary-action">Set up a simulated incident <span aria-hidden="true">→</span></Link>
         </section>
       )}
       {run && (
         <>
           {view !== 'overview' && (
-          <section style={{ ...card, display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+          <section className="run-context" style={{ ...card, display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
             <label style={muted}>Seed
               <input type="number" min="0" value={seed} onChange={(e) => setSeed(Math.max(0, Number(e.target.value) || 0))} style={{ ...input, width: 90, marginLeft: 8 }} />
               <button type="button" onClick={() => setSeed(Math.floor(Math.random() * 100000))} style={{ ...ghost, padding: '6px 10px', marginLeft: 6, fontSize: 12 }}>Random</button>
@@ -320,21 +336,32 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
             </div>
             <Link href="/incidents" style={{ color: 'var(--accent)', fontWeight: 600 }}>Start a new run in Incidents →</Link>
           </section>
+          {view === 'overview' && latestAiDecision && <AiOverviewPanel event={latestAiDecision} run={run} />}
+          {view === 'overview' && !latestAiDecision && (
+            <section className="ai-discovery-panel">
+              <div>
+                <p className="ai-overview-eyebrow">AI PLANNER</p>
+                <h2>This run has no AI diagnosis</h2>
+                <p>The selected policy does not emit AI decision provenance. Start an AI planner run to inspect diagnosis, confidence, fallback source, and proposed actions.</p>
+              </div>
+              <Link href="/incidents" className="secondary-action">Choose a policy and scenario <span aria-hidden="true">→</span></Link>
+            </section>
+          )}
           {view === 'overview' && (
-            <section style={card}>
-              <SectionHeader index="01" title="How this dashboard works" />
-              <ol style={{ ...muted, paddingLeft: 20, display: 'grid', gap: 6 }}>
-                <li><strong style={{ color: 'var(--text-primary)' }}>Generate an incident</strong> from the <Link href="/incidents">Incidents tab</Link>. Choose one of four scenarios and a seed; each seed produces reproducible synthetic telemetry.</li>
-                <li><strong style={{ color: 'var(--text-primary)' }}>Review the diagnosis.</strong> The AI planner can suggest recovery actions, but operator review runs hold those actions until you decide.</li>
-                <li><strong style={{ color: 'var(--text-primary)' }}>The policy decides.</strong> {POLICY_BLURB[policy]}</li>
-                <li><strong style={{ color: 'var(--text-primary)' }}>Choose what happens next.</strong> Open <Link href={'/plans/' + run.id}>Recovery Plans</Link> to approve a sandbox replay, test a plan in the Experiment Lab, or reject it.</li>
+            <section className="workflow-strip" aria-label="Operator workflow">
+              <SectionHeader index="01" title="Operator workflow" subtitle="Follow the evidence, then choose the recovery path." />
+              <ol className="workflow-strip-steps">
+                <li><span>01</span><strong>Generate</strong><Link href="/incidents">Choose a scenario and seed</Link></li>
+                <li><span>02</span><strong>Diagnose</strong><small>Review telemetry, cause, and risk</small></li>
+                <li><span>03</span><strong>Decide</strong><Link href={`/plans/${run.id}`}>Approve, test, or reject</Link></li>
+                <li><span>04</span><strong>Compare</strong><Link href="/experiments">Measure the alternatives</Link></li>
               </ol>
             </section>
           )}
           {(view === 'overview' || view === 'incident') && (
             <>
               {view === 'incident' && <SectionHeader index={numbering.metrics} title="Outcome metrics" />}
-              <section style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
+              <section className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
                 <KpiCard label="Transactions offered" value={number(run.metrics?.unique_offered)}
                          context="simulated user requests during the run" />
                 <KpiCard label="Transactions failed" value={number(run.metrics?.unique_failed)}
@@ -350,7 +377,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
                          context="recovery actions the policy took" />
               </section>
               {view === 'incident' && (
-                <section style={card}>
+                <section className="dashboard-panel telemetry-panel" style={card}>
                   <SectionHeader index={numbering.telemetry} title="Incident telemetry" subtitle={run.scenario === 'telemetry_faults' ? 'The chart shows generated sensor readings; telemetry can be noisy, delayed, or dropped. Transaction outcomes remain simulator ground truth.' : 'Backlog (blue) and error rate (red) per tick; orange verticals mark executed recovery actions.'} />
                   {run.scenario === 'telemetry_faults' && latestSensor && <p style={{ ...muted, margin: '0 0 10px' }}>
                     Latest sensor report: {latestSensor.sensor_age_ticks ?? 0} tick(s) old · {latestSensor.sensor_dropped ? 'reading dropped; previous value repeated' : 'reading received'} · {latestSensor.sensor_noise_applied ? 'noise applied' : 'no noise on this reading'}.
@@ -358,15 +385,15 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
                   <IncidentTelemetryChart events={events} />
                 </section>
               )}
-              {aiDecisions.length > 0 && (
-                <section style={card}>
+              {view === 'incident' && aiDecisions.length > 0 && (
+                <section className="dashboard-panel ai-evaluations-panel" style={card}>
                   <SectionHeader index={numbering.ai} title="AI evaluations" subtitle="Each card shows whether a configured model or the deterministic fallback made the recommendation." />
                   {aiDecisions.slice(0, 4).reverse().map((event) => {
                     const info = event.payload.ai!;
                     return (
                       <div key={event.event_id} style={{ borderTop: '1px solid var(--border)', padding: '14px 0' }}>
                         <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
-                          <strong style={{ ...chip, background: info.live ? 'var(--accent)' : 'var(--text-muted)', color: '#fff' }}>
+                          <strong style={{ ...chip, background: info.live ? 'var(--accent)' : 'var(--text-muted)', color: 'var(--bg-elevated)' }}>
                             {info.live ? `MODEL · ${info.model}` : 'RULE FALLBACK'}
                           </strong>
                           {info.diagnosis && (
@@ -385,7 +412,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
                           </div>
                         )}
                         <div style={muted}>
-                          Decision: <strong>{event.payload.actions.join(' + ') || 'no action'}</strong>
+                          Decision: <strong>{actionListLabel(event.payload.actions)}</strong>
                           {` · risk ${event.payload.predicted_risk}`}
                         </div>
                         {info.probes?.length ? <ProbeTable probes={info.probes} /> : null}
@@ -474,8 +501,8 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
                 <SectionHeader index={numbering.dec} title="Decisions" subtitle="Every action this policy took, tick by tick." />
                 {decisionRows.length ? decisionRows.map((event) => <div key={event.event_id} style={{ borderTop: '1px solid var(--border)', padding: '10px 0' }}>
                   {event.kind === 'execution'
-                    ? <>Tick {event.tick}: {event.payload.action} <span style={muted}>· by {event.payload.agent_id}</span></>
-                    : <>Tick {event.tick}: {event.payload.actions.join(', ')} <span style={muted}>· risk {event.payload.predicted_risk}</span></>}
+                    ? <>Tick {event.tick}: {actionLabel(event.payload.action)} <span style={muted}>· by {event.payload.agent_id}</span></>
+                    : <>Tick {event.tick}: {actionListLabel(event.payload.actions)} <span style={muted}>· risk {event.payload.predicted_risk}</span></>}
                 </div>) : (
                   <p style={muted}>
                     The policy executed <strong>no recovery action</strong> in this run. Every
@@ -487,19 +514,19 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
               </section>
             </>
           )}
-          {view === 'plans' && <section style={card}>
+          {view === 'plans' && <section className="operator-review-panel" style={card}>
             <SectionHeader index="01" title="Operator review" subtitle="The run used synthetic telemetry to diagnose the incident and propose recovery actions. No action has been applied." />
-            <div style={{ ...card, margin: '12px 0 18px', background: 'var(--accent-gradient-soft)' }}>
+            <div className="operator-choice" style={{ ...card, margin: '12px 0 18px', background: 'var(--accent-gradient-soft)' }}>
               <strong>Choose the next step</strong>
               <p style={{ ...muted, marginTop: 4 }}>Approve a plan for a local replay, send it to the Experiment Lab for a what-if comparison, or reject it. Every outcome is labeled simulated; there is no live server connection.</p>
             </div>
             {visiblePlans.map((plan) => {
               const info = plan.ai;
               const result = backtests[plan.id] ?? plan.backtest;
-              return <div key={plan.id} style={{ borderTop: '1px solid var(--border)', padding: '14px 0' }}>
+              return <div key={plan.id} className="plan-option" style={{ borderTop: '1px solid var(--border)', padding: '14px 0' }}>
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 260 }}>
-                    <strong>{plan.actions.join(' + ')}</strong>
+                    <strong>{actionListLabel(plan.actions)}</strong>
                     {info?.diagnosis && <div style={muted}>diagnosis: {info.diagnosis.cause} ({info.diagnosis.severity})</div>}
                     <div style={muted}>Risk estimate {plan.predicted_risk} · {plan.reasons.join('; ')}</div>
                     <span style={{ ...chip, color: plan.status === 'candidate' ? 'var(--warning)' : 'var(--success)', border: '1px solid currentColor', marginTop: 8 }}>{plan.status.toUpperCase()}</span>
@@ -516,7 +543,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
             })}
             {!visiblePlans.length && <p style={muted}>No action plan was generated for this run. Choose an AI-coordinated or coordinated policy to generate operator review candidates.</p>}
           </section>}
-          {view === 'experiments' && <section style={card}>
+          {view === 'experiments' && <section className="experiment-panel" style={card}>
             <SectionHeader index="01" title="The Experiment Lab" subtitle="Replay one candidate against the same synthetic incident before deciding whether to approve it." />
             {(() => {
               const labPlan = candidatePlans.find((candidate) => candidate.id === planId) ?? candidatePlans[0];
@@ -525,7 +552,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
               return <div style={{ ...card, margin: '12px 0 18px', borderColor: 'var(--accent)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 220 }}>
-                    <strong>{labPlan.actions.join(' + ')}</strong>
+                <strong>{actionListLabel(labPlan.actions)}</strong>
                     <p style={muted}>Run {run.id.slice(0, 8)} · predicted risk {labPlan.predicted_risk} · {labPlan.reasons.join('; ')}</p>
                   </div>
                   <button type="button" disabled={busy || backtesting === labPlan.id} onClick={() => backtest(labPlan)} style={action}>
@@ -554,7 +581,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
               <p style={muted}>One seed is a demonstration, not a statistical result.</p>
             </div>}
           </section>}
-          {view === 'audit' && <section style={card}>
+          {view === 'audit' && <section className="event-audit-panel" style={card}>
             <SectionHeader index="01" title={`Backend events (${events.length})`} subtitle="First 80 events; each has a tick and full provenance." />
             <div style={{ maxHeight: 650, overflowY: 'auto' }}>{events.slice(0, 80).map((event) =>
               <details key={event.event_id} style={{ padding: '9px 0', borderTop: '1px solid var(--border)' }}>
@@ -597,7 +624,7 @@ function BacktestVerdict({ result }: { result: BacktestResult }) {
           </tr></thead>
           <tbody>{result.arms.map((arm, index) => (
             <tr key={index} style={{ borderTop: '1px solid var(--border)' }}>
-              <td style={{ padding: 4 }}>{arm.actions.join(' + ') || 'no action (baseline)'}</td>
+              <td style={{ padding: 4 }}>{arm.actions.length ? actionListLabel(arm.actions) : 'No action (baseline)'}</td>
               <td style={{ padding: 4, color: index === 1 ? color : undefined, fontWeight: index === 1 ? 700 : undefined }}>{arm.unique_failed.toLocaleString()}</td>
               <td style={{ padding: 4 }}>{arm.unique_succeeded.toLocaleString()}</td>
               <td style={{ padding: 4 }}>{arm.max_queue_depth.toLocaleString()}</td>
@@ -620,7 +647,7 @@ function ProbeTable({ probes }: { probes: AIProbeOutcome[] }) {
         </tr></thead>
         <tbody>{probes.map((probe, index) => (
           <tr key={index} style={{ borderTop: '1px solid var(--border)' }}>
-            <td style={{ padding: 4 }}>{probe.actions.join(' + ') || 'no action'}</td>
+            <td style={{ padding: 4 }}>{probe.actions.length ? actionListLabel(probe.actions) : 'No action'}</td>
             <td style={{ padding: 4 }}>{probe.unique_failed.toLocaleString()}</td>
             <td style={{ padding: 4 }}>{probe.unique_succeeded.toLocaleString()}</td>
             <td style={{ padding: 4 }}>{probe.actions_executed}</td>
