@@ -5,7 +5,7 @@
  */
 export const tokens = {
   color: {
-    bgBase: '#E8DCC6',
+    bgBase: '#B7A89A',
     bgSurface: '#F7F0E5',
     bgElevated: '#FFFAF2',
     bgHover: '#E4D5C0',

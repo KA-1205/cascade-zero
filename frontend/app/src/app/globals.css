@@ -7,8 +7,8 @@
    ───────────────────────────────────────────────────────────────────────────── */
 
 :root {
-  /* Mocha cream surfaces, cosmic latte highlights, burgundy actions. */
-  --bg-base: #e8dcc6;
+  /* Cosmic latte background, mocha cream highlights, burgundy actions. */
+  --bg-base: #b7a89a;
   --bg-surface: #f7f0e5;
   --bg-elevated: #fffaf2;
   --bg-hover: #e4d5c0;
@@ -75,11 +75,11 @@ html {
 body {
   height: 100%;
   background-color: var(--bg-base);
-  /* Mocha cream wash with cosmic latte highlights. */
+  /* Cosmic latte base with mocha cream gradient highlights. */
   background-image:
-    radial-gradient(ellipse 58% 44% at 7% 0%, rgba(183, 168, 154, 0.42) 0%, transparent 72%),
-    radial-gradient(ellipse 42% 34% at 96% 100%, rgba(183, 168, 154, 0.3) 0%, transparent 72%),
-    linear-gradient(135deg, #e8dcc6 0%, #f5eee2 52%, #ecdfce 100%);
+    radial-gradient(ellipse 58% 44% at 7% 0%, rgba(232, 220, 198, 0.76) 0%, transparent 72%),
+    radial-gradient(ellipse 42% 34% at 96% 100%, rgba(232, 220, 198, 0.52) 0%, transparent 72%),
+    linear-gradient(135deg, #b7a89a 0%, #c8b7a7 52%, #ad9c91 100%);
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 14px;
