@@ -6,8 +6,8 @@ using them; the CSS is the source of truth for values.
 
 ## Foundations
 
-- **Theme**: cosmic latte background with mocha cream gradient highlights,
-  deep burgundy for primary actions and active navigation, warm dark-brown text.
+- **Theme**: cosmic latte desktop canvas with restrained mocha cream light,
+  deep burgundy for the sandbox banner, primary actions, and active navigation.
   No dark-mode variant yet; every color must come from a CSS variable so one
   can be added later without touching components.
 - **Type**: `--font-sans` is Plus Jakarta Sans (UI text); `--font-mono` is
@@ -18,8 +18,9 @@ using them; the CSS is the source of truth for values.
 - **Radius**: `--radius-card` 12px (cards), `--radius-badge` 6px,
   `--radius-button` 8px.
 - **Palette**: cosmic latte `#B7A89A` background, mocha cream `#E8DCC6`
-  highlights, and deep burgundy `#722F37`. Use burgundy for links, primary buttons, and active
-  navigation; use the restrained burgundy-to-latte gradient for brand marks.
+  highlights, and deep burgundy `#722F37`. Use the darker `--accent-ink` for
+  text links on the background and burgundy fills with cream text for primary
+  actions. Reserve gradients for the page canvas and small brand marks.
 
 ## Status colors
 

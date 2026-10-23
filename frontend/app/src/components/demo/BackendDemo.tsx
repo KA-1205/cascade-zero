@@ -21,7 +21,7 @@ const muted: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 13, l
 const action: React.CSSProperties = { border: 0, borderRadius: 8, background: 'var(--accent)', color: '#fff', padding: '10px 14px', cursor: 'pointer', fontWeight: 600 };
 const ghost: React.CSSProperties = { ...action, background: 'transparent', color: 'var(--accent)', border: '1px solid var(--accent)' };
 const chip: React.CSSProperties = { display: 'inline-block', borderRadius: 999, padding: '2px 10px', fontSize: 11, fontWeight: 700, letterSpacing: '0.04em' };
-const input: React.CSSProperties = { padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)' };
+const input: React.CSSProperties = { padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-elevated)' };
 
 function number(value: number | undefined | null) {
   return typeof value === 'number' ? value.toLocaleString() : '—';

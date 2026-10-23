@@ -11,7 +11,7 @@ export function SectionHeader({ index, title, subtitle }: {
   index: string; title: string; subtitle?: string;
 }) {
   return (
-    <div style={{ marginBottom: 14 }}>
+    <div className="section-heading" style={{ marginBottom: 14 }}>
       <div style={{
         display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 2,
       }}>
@@ -39,7 +39,7 @@ export function KpiCard({ label, value, context, tone }: {
     bad: 'var(--danger)',
   }[tone ?? 'default'];
   return (
-    <div className="surface" style={{ padding: '16px 20px', minWidth: 0 }}>
+    <div className="surface kpi-card" style={{ padding: '16px 20px', minWidth: 0 }}>
       <div style={{
         fontSize: 11, color: 'var(--text-muted)', fontWeight: 600,
         textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8,

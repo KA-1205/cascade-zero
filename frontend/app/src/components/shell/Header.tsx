@@ -58,6 +58,7 @@ export function Header({ onMenuToggle, menuOpen }: HeaderProps) {
 
   return (
     <header
+      className="app-header"
       style={{
         height: 60,
         backgroundColor: 'var(--bg-surface)',

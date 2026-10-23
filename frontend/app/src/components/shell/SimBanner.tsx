@@ -3,6 +3,7 @@
 export function SimBanner() {
   return (
     <div
+      className="sim-banner"
       role="status"
       aria-live="polite"
       style={{
@@ -25,8 +26,8 @@ export function SimBanner() {
       <span style={{ fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', fontSize: 11 }}>
         Seeded Sandbox
       </span>
-      <span style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>
-      <span style={{ color: 'var(--text-secondary)' }}>
+      <span className="sim-banner-separator" style={{ color: 'var(--text-muted)', fontWeight: 400 }}>—</span>
+      <span className="sim-banner-copy" style={{ color: 'var(--text-secondary)' }}>
         Results come from the backend&apos;s deterministic infrastructure simulator. No production systems are connected.
       </span>
     </div>

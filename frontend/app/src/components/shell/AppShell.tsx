@@ -35,6 +35,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div
+      className="app-shell"
       style={{
         display: 'flex',
         height: '100vh',

@@ -59,7 +59,7 @@ export function LiveIncidentsEntry() {
     }
   }
 
-  const input: React.CSSProperties = { padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg)' };
+  const input: React.CSSProperties = { padding: 8, borderRadius: 8, border: '1px solid var(--border)', background: 'var(--bg-elevated)' };
   const button: React.CSSProperties = { border: 0, borderRadius: 8, background: 'var(--accent)', color: '#fff', padding: '10px 14px', cursor: 'pointer', fontWeight: 600 };
   const muted: React.CSSProperties = { color: 'var(--text-muted)', fontSize: 13 };
   const stateColor: Record<string, string> = {

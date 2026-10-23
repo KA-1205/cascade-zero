@@ -19,11 +19,12 @@
   --border-subtle: #e4d8c7;
 
   /* Text */
-  --text-primary: #352729;
-  --text-secondary: #59484a;
-  --text-muted: #6e5e59;
+  --text-primary: #302427;
+  --text-secondary: #473a3c;
+  --text-muted: #493b3d;
 
   --accent: #722f37;
+  --accent-ink: #522f34;
   --accent-end: #b7a89a;
   --accent-hover: #5d252d;
   --accent-muted: #722f3718;
@@ -34,7 +35,7 @@
   /* Status */
   --success: #247a57;
   --success-muted: #247a5718;
-  --warning: #9a6417;
+  --warning: #88570f;
   --warning-muted: #9a641718;
   --danger: #a43b43;
   --danger-muted: #a43b4318;
@@ -77,9 +78,9 @@ body {
   background-color: var(--bg-base);
   /* Cosmic latte base with mocha cream gradient highlights. */
   background-image:
-    radial-gradient(ellipse 58% 44% at 7% 0%, rgba(232, 220, 198, 0.76) 0%, transparent 72%),
-    radial-gradient(ellipse 42% 34% at 96% 100%, rgba(232, 220, 198, 0.52) 0%, transparent 72%),
-    linear-gradient(135deg, #b7a89a 0%, #c8b7a7 52%, #ad9c91 100%);
+    radial-gradient(ellipse 48% 56% at 0% 0%, rgba(232, 220, 198, 0.92) 0%, transparent 74%),
+    radial-gradient(ellipse 36% 48% at 100% 100%, rgba(232, 220, 198, 0.62) 0%, transparent 72%),
+    linear-gradient(135deg, #b7a89a 0%, #c2b2a4 52%, #aa988d 100%);
   color: var(--text-primary);
   font-family: var(--font-sans);
   font-size: 14px;
@@ -131,8 +132,8 @@ body {
 .surface {
   background-color: var(--bg-surface);
   border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+  border-radius: 10px;
+  box-shadow: 0 2px 8px rgba(53, 39, 41, 0.055);
 }
 
 .surface-elevated {
@@ -390,6 +391,135 @@ body {
 
 .header-menu-toggle {
   display: none !important;
+}
+
+/* Desktop command-center layout */
+.app-shell {
+  height: 100vh;
+  background: transparent;
+}
+
+.app-main-content {
+  padding: 30px 36px !important;
+  background: rgba(232, 220, 198, 0.22);
+}
+
+.app-header {
+  height: 68px !important;
+  padding: 0 30px !important;
+  background: rgba(247, 240, 229, 0.94) !important;
+}
+
+.app-sidebar {
+  background: rgba(247, 240, 229, 0.96) !important;
+}
+
+.sim-banner {
+  min-height: 38px;
+  padding: 7px 30px !important;
+  color: var(--bg-elevated) !important;
+  background: var(--accent) !important;
+  border-bottom: 0 !important;
+  letter-spacing: 0.01em;
+}
+
+.sim-banner .sim-banner-separator,
+.sim-banner .sim-banner-copy {
+  color: var(--bg-elevated) !important;
+}
+
+.console-page {
+  width: min(1480px, 100%);
+  margin: 0 auto;
+  display: grid;
+  gap: 22px !important;
+}
+
+.console-page > .page-heading {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+  gap: 28px;
+  padding: 2px 0 8px;
+}
+
+.page-heading h1 {
+  font-size: 31px !important;
+  line-height: 1.16;
+  letter-spacing: -0.035em;
+  font-weight: 750;
+}
+
+.page-heading p {
+  max-width: 760px;
+  margin-top: 8px;
+  font-size: 14px !important;
+  line-height: 1.6;
+}
+
+.console-page > section,
+.console-page > .dashboard-panel {
+  scroll-margin-top: 24px;
+}
+
+.console-page .surface {
+  border-color: rgba(114, 47, 55, 0.12);
+}
+
+.console-page input,
+.console-page select {
+  min-height: 38px;
+  color: var(--text-primary);
+  background: var(--bg-elevated) !important;
+  border-color: var(--border) !important;
+}
+
+.console-page button,
+.console-page a {
+  transition: transform 140ms ease, box-shadow 140ms ease, background-color 140ms ease;
+}
+
+.console-page button:not(:disabled):hover,
+.console-page a:hover {
+  transform: translateY(-1px);
+}
+
+.console-page button:disabled {
+  cursor: wait !important;
+  opacity: 0.66;
+}
+
+.console-page a:not([style*="background"]),
+.page-heading a {
+  color: var(--accent-ink);
+}
+
+.console-page a:focus-visible,
+.console-page button:focus-visible,
+.console-page input:focus-visible,
+.console-page select:focus-visible,
+.console-page summary:focus-visible {
+  outline: 3px solid var(--accent-ink);
+  outline-offset: 3px;
+}
+
+.kpi-card {
+  min-height: 124px;
+  padding: 18px 20px !important;
+  border-top: 3px solid rgba(114, 47, 55, 0.68) !important;
+  background: rgba(255, 250, 242, 0.97) !important;
+}
+
+.operator-review-panel,
+.experiment-panel,
+.event-audit-panel {
+  padding: 22px !important;
+}
+
+@media (min-width: 1100px) {
+  .console-page--overview > .kpi-grid {
+    grid-template-columns: repeat(3, minmax(0, 1fr)) !important;
+  }
 }
 
 @media (max-width: 760px) {
