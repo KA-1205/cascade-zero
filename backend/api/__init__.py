@@ -15,6 +15,9 @@ import os
 import re
 import threading
 import traceback
+import time
+from collections import deque
+from urllib.parse import parse_qs, urlsplit
 from datetime import datetime, timezone
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -23,7 +26,7 @@ from uuid import uuid4
 
 from backend.actions import ACTION_AGENTS
 from backend.ai import AIPlanner, GeminiClient
-from backend.ai.planner import counterfactual
+from backend.replay import replay_candidate
 from backend.coordinator import default_coordinator
 from backend.simulator import (DEFAULT_CONFIG, SCENARIOS, ObservableState,
                                scenario_overlay, simulate)
@@ -33,6 +36,11 @@ _runs: dict[str, dict] = {}
 _plans: dict[str, dict] = {}
 _approval_keys: set[tuple[str, str]] = set()
 _lock = threading.RLock()
+_changed = threading.Condition(_lock)
+MAX_RUNS = 100
+MAX_ACTIVE_RUNS = 8
+MAX_RUNS_PER_MINUTE = 60
+_run_starts: deque[float] = deque()
 _run_path = re.compile(r"/v1/runs/([^/]+)(?:/(events|plans))?")
 _approval_path = re.compile(r"/v1/plans/([^/]+)/approval")
 _backtest_path = re.compile(r"/v1/plans/([^/]+)/backtest")
@@ -52,7 +60,8 @@ def _topology() -> dict:
 
 def _valid_run_request(body: object) -> bool:
     return (isinstance(body, dict) and type(body.get("seed")) is int
-            and body["seed"] >= 0 and body.get("scenario") in SCENARIOS
+            and 0 <= body["seed"] <= 2**53 - 1
+            and isinstance(body.get("scenario"), str) and body["scenario"] in SCENARIOS
             and body.get("policy") in ("none", "independent", "guardrails",
                                        "coordinated", "ai_coordinated")
             and body.get("purpose", "policy_comparison") in
@@ -185,7 +194,7 @@ def _admin_status() -> dict:
         },
         "transactions": totals,
         "ai_engine": {
-            "model": DEFAULT_MODEL,
+            "model": os.environ.get("GEMMA_MODEL", "").strip() or DEFAULT_MODEL,
             "provider_configured": bool(os.environ.get("GEMINI_API_KEY")),
             "live_decisions": ai_live,
             "fallback_decisions": ai_fallback,
@@ -207,30 +216,34 @@ def _plan_callable(policy: str, seed: int, overlay: dict):
 def _execute_run(stored: dict, run: dict, request: dict, overlay: dict) -> None:
     try:
         plan = _plan_callable(request["policy"], request["seed"], overlay)
-        result = simulate(request["seed"], request["policy"], overlay, plan=plan,
-                          apply_actions=request.get("purpose") != "operator_review")
-        run["metrics"] = {key: value for key, value in result["metrics"].items()
+        def publish(original):
+            with _changed:
+                index = len(stored['events'])
+                event = {key: value for key, value in original.items() if key in _event_fields}
+                event.update(event_id=f"{run['id']}:{index:06d}", run_id=run['id'])
+                stored['events'].append(event)
+                if request['policy'] in ('coordinated', 'ai_coordinated') and event['kind'] == 'decision':
+                    decision = event['payload']
+                    candidate = {
+                        'id': f"{run['id']}:plan:{index:06d}", 'run_id': run['id'],
+                        'actions': decision['actions'], 'predicted_risk': decision['predicted_risk'],
+                        'reasons': decision['reasons'], 'status': 'candidate',
+                        'simulated': True, 'measured': False, 'decision_tick': event['tick'],
+                        'purpose': request.get('purpose', 'policy_comparison'),
+                    }
+                    if 'ai' in decision:
+                        candidate['ai'] = decision['ai']
+                    stored['plans'].append(candidate)
+                    _plans[candidate['id']] = (stored, candidate, index)
+                _changed.notify_all()
+
+        result = simulate(request['seed'], request['policy'], overlay, plan=plan,
+                          apply_actions=request.get('purpose') != 'operator_review',
+                          on_event=publish)
+        run['metrics'] = {key: value for key, value in result['metrics'].items()
                           if isinstance(value, (int, float)) and not isinstance(value, bool)}
-        run["runtime"] = result["runtime"]
-        run["trace_hash"] = result["trace_hash"]
-        for index, original in enumerate(result["events"]):
-            event = {key: value for key, value in original.items() if key in _event_fields}
-            event.update(event_id=f"{run['id']}:{index:06d}", run_id=run["id"])
-            plan_record = None
-            if request["policy"] in ("coordinated", "ai_coordinated") and event["kind"] == "decision":
-                decision = event["payload"]
-                plan_record = {"id": f"{run['id']}:plan:{index:06d}", "run_id": run["id"],
-                               "actions": decision["actions"], "predicted_risk": decision["predicted_risk"],
-                               "reasons": decision["reasons"], "status": "candidate",
-                               "simulated": True, "measured": False,
-                               "purpose": request.get("purpose", "policy_comparison")}
-                if "ai" in decision:
-                    plan_record["ai"] = decision["ai"]
-            with _lock:
-                stored["events"].append(event)
-                if plan_record is not None:
-                    stored["plans"].append(plan_record)
-                    _plans[plan_record["id"]] = (stored, plan_record, index)
+        run['runtime'] = result['runtime']
+        run['trace_hash'] = result['trace_hash']
         run["state"] = "completed"
     except Exception as exc:
         # A failed simulation remains inspectable rather than escaping as an
@@ -238,11 +251,33 @@ def _execute_run(stored: dict, run: dict, request: dict, overlay: dict) -> None:
         # to stderr and the cause lands on the run record for the operator.
         traceback.print_exc()
         run["state"] = "failed"
-        run["failed_reason"] = f"{type(exc).__name__}: {exc}"
+        run["failed_reason"] = "Simulation failed; inspect the backend log for details."
+    finally:
+        with _changed:
+            _changed.notify_all()
+
+
+def _record_operator_decision(stored: dict, plan: dict, approved: bool, reason: str) -> None:
+    now = datetime.now(timezone.utc).isoformat()
+    plan.update(operator_reason=reason, decided_at=now, operator='authenticated-operator')
+    run_id = stored['run']['id']
+    stored['events'].append({
+        'event_id': f"{run_id}:{len(stored['events']):06d}", 'run_id': run_id,
+        'tick': plan['decision_tick'], 'kind': 'verification', 'simulated': True,
+        'timestamp': now, 'trace_id': run_id,
+        'payload': {'plan_id': plan['id'], 'approved': approved, 'reason': reason,
+                    'actor': 'authenticated-operator', 'decided_at': now,
+                    'execution': plan.get('execution'), 'measured': False},
+    })
+    _changed.notify_all()
 
 
 class Handler(BaseHTTPRequestHandler):
     """Request handler; use ``ThreadingHTTPServer(('127.0.0.1', 0), Handler)``."""
+
+    def setup(self):
+        super().setup()
+        self.connection.settimeout(30)
 
     def _send(self, status: int, body: object | None = None) -> None:
         data = b"" if body is None else json.dumps(body, allow_nan=False).encode("utf-8")
@@ -259,8 +294,14 @@ class Handler(BaseHTTPRequestHandler):
             raise ValueError("invalid content length")
         return json.loads(self.rfile.read(length))
 
+    def _access_required(self) -> bool:
+        return (os.environ.get("CASCADE_REQUIRE_AUTH") == "true"
+                or self.server.server_address[0] not in ("127.0.0.1", "::1", "localhost"))
+
     def do_GET(self) -> None:
         path = self.path.split("?", 1)[0]
+        if path != "/v1/health" and self._access_required() and not self._authorize():
+            return self._send(403, {"error": "forbidden"})
         if path == "/v1/health":
             return self._send(200, {"status": "ok"})
         if path == "/v1/topology":
@@ -293,7 +334,8 @@ class Handler(BaseHTTPRequestHandler):
             # Snapshot under the lock: the AI worker appends without the
             # reader holding it, and iterating a live list is a data race.
             events = list(stored["events"])
-        last = self.headers.get("Last-Event-ID")
+        query = parse_qs(urlsplit(self.path).query)
+        last = self.headers.get("Last-Event-ID") or query.get("after", [None])[0]
         try:
             # Event ids have the form <run_id>:<zero-based index>. Numeric
             # offsets are also accepted for clients without an event id.
@@ -302,6 +344,8 @@ class Handler(BaseHTTPRequestHandler):
                 raise ValueError
         except ValueError:
             return self._send(400, {"error": "invalid Last-Event-ID"})
+        if query.get('stream') == ['1']:
+            return self._stream_events(stored, offset)
         data = b"".join(b"data: " + json.dumps(event, allow_nan=False).encode("utf-8") + b"\n\n"
                         for event in events[offset + 1:])
         self.send_response(200)
@@ -311,7 +355,39 @@ class Handler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(data)
 
+    def _stream_events(self, stored: dict, offset: int) -> None:
+        self.send_response(200)
+        self.send_header('Content-Type', 'text/event-stream')
+        self.send_header('Cache-Control', 'no-store')
+        self.send_header('X-Accel-Buffering', 'no')
+        self.end_headers()
+        deadline = time.monotonic() + 300
+        try:
+            while time.monotonic() < deadline:
+                with _changed:
+                    tail = list(stored['events'][offset + 1:])
+                    done = stored['run']['state'] not in ('running', 'created')
+                    if not tail and not done:
+                        _changed.wait(timeout=10)
+                        tail = list(stored['events'][offset + 1:])
+                        done = stored['run']['state'] not in ('running', 'created')
+                if not tail and not done:
+                    self.wfile.write(b': heartbeat\n\n')
+                for event in tail:
+                    frame = f"id: {event['event_id']}\ndata: {json.dumps(event)}\n\n"
+                    self.wfile.write(frame.encode())
+                    offset += 1
+                if done:
+                    self.wfile.write(b'event: done\ndata: {}\n\n')
+                self.wfile.flush()
+                if done:
+                    return
+        except (BrokenPipeError, ConnectionResetError):
+            return
+
     def do_POST(self) -> None:
+        if self._access_required() and not self._authorize():
+            return self._send(403, {"error": "forbidden"})
         path = self.path.split("?", 1)[0]
         if path == "/v1/runs":
             return self._create_run()
@@ -408,8 +484,25 @@ class Handler(BaseHTTPRequestHandler):
         overlay = scenario_overlay(request["scenario"])
         stored = {"run": run, "events": [], "plans": [], "overlay": overlay}
         with _lock:
+            now = time.monotonic()
+            while _run_starts and now - _run_starts[0] > 60:
+                _run_starts.popleft()
+            active = sum(s['run']['state'] in ('created', 'running') for s in _runs.values())
+            if active >= MAX_ACTIVE_RUNS or len(_run_starts) >= MAX_RUNS_PER_MINUTE:
+                return self._send(429, {'error': 'Run capacity reached; try again shortly'})
+            while len(_runs) >= MAX_RUNS:
+                oldest = next((key for key, value in _runs.items()
+                               if value['run']['state'] not in ('created', 'running')
+                               and not any(p['status'] == 'delayed' for p in value['plans'])), None)
+                if oldest is None:
+                    return self._send(429, {'error': 'Run storage is busy; try again shortly'})
+                removed = _runs.pop(oldest)
+                for candidate in removed['plans']:
+                    _plans.pop(candidate['id'], None)
+                _approval_keys.difference_update({key for key in _approval_keys if key[0].startswith(oldest + ':')})
+            _run_starts.append(now)
+            run['state'] = 'running'
             _runs[run_id] = stored
-        run["state"] = "running"
         if request["policy"] == "ai_coordinated":
             # Live model calls take seconds each: execute in the background so
             # the response returns immediately and events stream as they land.
@@ -437,7 +530,7 @@ class Handler(BaseHTTPRequestHandler):
         except (ValueError, UnicodeDecodeError):
             return self._send(400, {"error": "invalid JSON body"})
         if not isinstance(body, dict) or type(body.get("approved")) is not bool or (
-                "reason" in body and not isinstance(body["reason"], str)):
+                "reason" in body and (not isinstance(body["reason"], str) or len(body["reason"]) > 1000)):
             return self._send(400, {"error": "approved must be a boolean"})
         with _lock:
             entry = _plans.get(plan_id)
@@ -448,7 +541,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(409)
             if body["approved"] is False:
                 plan["status"] = "rejected"
-                plan["operator_reason"] = body.get("reason", "")
+                _record_operator_decision(stored, plan, False, body.get("reason", ""))
                 _approval_keys.add((plan_id, key))
                 return self._send(202)
             # Claim the plan so concurrent decisions cannot replay it twice;
@@ -478,7 +571,7 @@ class Handler(BaseHTTPRequestHandler):
         # and never invokes a webhook or touches an external service.
         approval_result = None
         try:
-            approval_result = counterfactual(seed, overlay or {}, plan["actions"], 70)
+            approval_result = replay_candidate(seed, overlay or {}, plan["actions"], plan["decision_tick"], events)
         except (ValueError, NotImplementedError):
             release_claim()
             return self._send(409, {"error": "sandbox replay could not be completed"})
@@ -491,6 +584,7 @@ class Handler(BaseHTTPRequestHandler):
             plan["execution"] = {"status": "dry-run", "simulated": True,
                                   "measured": False, "replayed": True,
                                   "error": None, "outcome": approval_result}
+            _record_operator_decision(stored, plan, True, body.get("reason", ""))
             _approval_keys.add((plan_id, key))
         return self._send(202)
 
@@ -516,14 +610,16 @@ class Handler(BaseHTTPRequestHandler):
             overlay = stored.get("overlay") or {}
             seed = stored["run"]["seed"]
             actions = list(plan["actions"])
-        baseline = counterfactual(seed, overlay, [], 70)
-        arms = [baseline, counterfactual(seed, overlay, actions, 70)]
+            events = list(stored["events"])
+            tick = plan["decision_tick"]
+        baseline = replay_candidate(seed, overlay, [], tick, events)
+        arms = [baseline, replay_candidate(seed, overlay, actions, tick, events)]
         if len(actions) > 1:
-            arms.extend(counterfactual(seed, overlay, [action], 70)
+            arms.extend(replay_candidate(seed, overlay, [action], tick, events)
                         for action in actions)
         delta = arms[1]["unique_failed"] - baseline["unique_failed"]
         result = {"plan_id": plan_id, "run_id": stored["run"]["id"], "seed": seed,
-                  "actions": actions, "arms": arms,
+                  "actions": actions, "arms": arms, "decision_tick": tick, "replay_mode": "single_decision",
                   "baseline_failed": baseline["unique_failed"],
                   "plan_failed": arms[1]["unique_failed"],
                   "delta_failed": delta,
@@ -553,5 +649,7 @@ def serve(host: str | None = None, port: int | None = None) -> None:
         raise ValueError(
             "API may bind only to loopback; set CASCADE_ALLOW_PUBLIC_BIND=true "
             "to allow a public bind")
+    if host not in ("127.0.0.1", "localhost", "::1") and not os.environ.get("CASCADE_APPROVAL_TOKEN"):
+        raise ValueError("Public API requires CASCADE_APPROVAL_TOKEN")
     with ThreadingHTTPServer((host, port), Handler) as server:
         server.serve_forever()

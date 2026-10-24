@@ -199,6 +199,7 @@ class _Run:
     sensor_rng: random.Random | None = None
     tick: int = 0
     events: list[dict] = field(default_factory=list)
+    on_event: Any = None
     transactions: list[_Transaction] = field(default_factory=list)
     queues: dict[str, deque] = field(default_factory=lambda: {
         name: deque() for name in ("gateway", "orders", "payments", "database")})
@@ -300,6 +301,8 @@ def _emit(run: _Run, kind: str, payload: dict) -> None:
                        "timestamp": (datetime(2026, 1, 1, tzinfo=timezone.utc)
                                      + timedelta(seconds=tick)).isoformat(),
                        "payload": {**payload, "measured": False}})
+    if run.on_event is not None:
+        run.on_event(run.events[-1])
 
 
 def _proposals(policy: str, state: ObservableState, action_config: dict) -> list[dict]:
@@ -442,7 +445,7 @@ def _percentile(values: list[int], fraction: float) -> int | None:
 
 
 def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=None,
-             apply_actions: bool = True) -> dict:
+             apply_actions: bool = True, on_event=None) -> dict:
     """Return immutable-by-convention result with trace, hash and unique-user metrics."""
     if seed < 0:
         raise ValueError("seed must be non-negative")
@@ -459,7 +462,7 @@ def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=N
         return random.Random(int.from_bytes(digest))
     run = _Run(seed, policy, cfg, stream("traffic"), stream("retry"),
                hashlib.sha256(json.dumps([seed, policy, cfg], sort_keys=True).encode()).hexdigest()[:16],
-               sensor_rng=stream("telemetry"))
+               sensor_rng=stream("telemetry"), on_event=on_event)
     fault = cfg["fault"]
     for tick in range(cfg["ticks"]):
         run.tick = tick
