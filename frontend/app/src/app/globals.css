@@ -922,3 +922,48 @@ body {
     transition-duration: 0.01ms !important;
   }
 }
+
+/* Desktop operator workflow: compact context, stable grids, complete history. */
+.console-page { gap: 16px !important; }
+.console-page > .page-heading { align-items: center; gap: 18px; padding-bottom: 0; }
+.page-heading h1 { font-size: 28px !important; }
+.page-heading .page-mode-tag { display: none; }
+.page-eyebrow { font-size: 10px; letter-spacing: .1em; }
+.kpi-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+@media (min-width: 1800px) { .kpi-grid { grid-template-columns: repeat(6, minmax(0, 1fr)); } }
+.incident-setup-panel { display: grid !important; grid-template-columns: repeat(3, minmax(0, 1fr)) auto; gap: 16px !important; align-items: end !important; }
+.incident-setup-panel > div { grid-column: 1 / -1; }
+.incident-setup-panel > label { min-width: 0; display: grid; gap: 6px; }
+.incident-setup-panel > label :is(input, select) { width: 100% !important; margin-left: 0 !important; }
+.incident-setup-panel button { white-space: nowrap; }
+.run-context { padding: 12px 18px !important; gap: 12px !important; }
+.ai-overview-panel { padding: 18px 22px; }
+.ai-overview-grid { gap: 20px; }
+.operator-choice { padding: 10px 14px !important; margin: 8px 0 12px !important; }
+.plan-option details { margin-top: 6px; }
+.plan-option summary { color: var(--accent); cursor: pointer; font-size: 12px; }
+.plan-option small { overflow-wrap: anywhere; }
+.pagination { display: flex; gap: 10px; align-items: center; padding: 10px 0; font-size: 12px; }
+.pagination > span { margin-right: auto; }
+.pagination button, .audit-filters button, [role="alert"] button { padding: 7px 12px; border: 1px solid var(--accent); color: var(--accent); background: var(--bg-elevated); border-radius: 6px; cursor: pointer; }
+button:disabled { cursor: not-allowed !important; opacity: .5; }
+.event-audit-panel { padding: 20px; }
+.audit-filters { display: flex; flex-wrap: wrap; gap: 12px; align-items: end; margin-top: 16px; }
+.audit-filters label { display: grid; gap: 4px; font-size: 12px; }
+.audit-filters input, .audit-filters select { padding: 7px 10px; border: 1px solid var(--border); border-radius: 6px; background: var(--bg-elevated); color: var(--text-primary); }
+.event-audit-panel details { padding: 10px 0; border-top: 1px solid var(--border); }
+.event-audit-panel summary { cursor: pointer; }
+.event-audit-panel pre { white-space: pre-wrap; overflow-wrap: anywhere; font-size: 12px; padding: 12px; background: var(--bg-elevated); }
+.event-timestamp { float: right; color: var(--text-secondary); font-size: 12px; font-weight: 400; }
+.topology-graph { width: 100%; max-height: 260px; margin-top: 12px; color: var(--text-primary); }
+.topology-graph text { fill: currentColor; font-family: var(--font-sans); }
+:is(.experiment-panel, .event-audit-panel) th { text-align: left; padding: 8px; font-size: 12px; }
+.run-context-identity { flex-basis: 100%; font-size: 12px; color: var(--text-secondary); }
+.console-page--incident .ai-overview-head { padding-bottom: 10px; }
+.console-page--incident .ai-overview-grid { padding: 12px 0; }
+.console-page--incident .ai-simulation-note { padding-top: 8px; }
+.console-page--incident .kpi-card { padding: 12px 16px !important; }
+.console-page--incident .section-heading { margin-bottom: 0 !important; }
+.console-page--incident { gap: 12px !important; }
+.console-page--incident .ai-overview-panel { padding: 14px 20px; }
+.console-page--incident .ai-overview-panel > .ai-simulation-note:last-child { display: none; }

@@ -14,35 +14,34 @@ import type {
 // ─────────────────────────────────────────────────────────────────────────────
 // Live transport — connects to the real backend API.
 //
-// Default is SAME-ORIGIN (`BASE = ''`): browser requests hit the Next server,
-// whose rewrite proxy (next.config.ts) forwards `/v1/*` to the backend at
-// `CASCADE_API_ORIGIN` (default http://127.0.0.1:8000). The backend binds
-// loopback only and sends no CORS headers, so a direct cross-origin call from
-// the browser would be blocked — the proxy keeps every path inside the
-// contract without touching backend/**. Set NEXT_PUBLIC_API_URL to bypass the
-// proxy (requires a backend that allows that origin).
+// Browser requests stay same-origin. The operator gate authenticates each
+// request and the server route supplies its private backend token.
+// Cross-origin transport bypasses are deliberately unsupported.
 //
 // Responses are typed via `@/types/api` only; there is no runtime response
 // validation, so a malformed backend response surfaces as bad data at the
 // consumer, not a thrown schema error.
 // ─────────────────────────────────────────────────────────────────────────────
 
-const BASE = process.env.NEXT_PUBLIC_API_URL ?? '';
+const BASE = ''; // Operator access always passes through the authenticated same-origin server.
 
 async function apiFetch<T>(path: string, init?: RequestInit): Promise<T> {
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json', ...init?.headers },
     ...init,
+    cache: 'no-store',
+    signal: init?.signal ?? AbortSignal.timeout(15000),
+    headers: { 'Content-Type': 'application/json', ...init?.headers },
   });
   if (!res.ok) {
-    throw new Error(`API ${init?.method ?? 'GET'} ${path} → ${res.status} ${res.statusText}`);
+    const detail = await res.json().catch(() => null);
+    throw new Error(detail?.error ?? (res.status === 404 ? 'Requested run or plan not found' : `Request failed (${res.status}). Try again.`));
   }
   const body = await res.text();
   return (body ? JSON.parse(body) : undefined) as T;
 }
 
 // SSE reconnect settings: fixed interval, capped number of attempts. The
-// attempt counter resets whenever the stream actually opens, so a healthy
+// attempt counter resets when a valid event arrives, so a healthy
 // long-lived connection never backs itself into the cap.
 const SSE_RECONNECT_INTERVAL_MS = 3000;
 const SSE_MAX_RECONNECT_ATTEMPTS = 5;
@@ -84,6 +83,7 @@ export const liveTransport = {
     const headers: HeadersInit = afterEventId ? { 'Last-Event-ID': afterEventId } : {};
     const response = await fetch(`${BASE}/v1/runs/${runId}/events`, {
       cache: 'no-store',
+      signal: AbortSignal.timeout(15000),
       headers,
     });
     if (!response.ok) throw new Error(`Events for run ${runId}: ${response.status}`);
@@ -142,7 +142,7 @@ export const liveTransport = {
   },
 
   /**
-   * Opens a real SSE connection (GET /v1/runs/{run_id}/events) with
+   * Opens a real SSE connection (GET /v1/runs/{run_id}/events?stream=1) with
    * capped-interval reconnect. Returns a cleanup function.
    *
    * Reconnect strategy (decision D-0032): on connection error the previous
@@ -161,6 +161,7 @@ export const liveTransport = {
     let source: EventSource | null = null;
     let reconnectTimer: ReturnType<typeof setTimeout> | null = null;
     let attempts = 0;
+    let lastEventId: string | undefined;
     let disposed = false;
 
     const connect = () => {
@@ -170,16 +171,18 @@ export const liveTransport = {
       // Close the previous EventSource before resubscribing so the browser's
       // built-in auto-reconnect never runs in parallel with this loop.
       source?.close();
-      source = new EventSource(`${BASE}/v1/runs/${runId}/events`);
+      source = new EventSource(`${BASE}/v1/runs/${runId}/events?stream=1${lastEventId ? `&after=${encodeURIComponent(lastEventId)}` : ''}`);
+      source.addEventListener('done', () => { disposed = true; source?.close(); onStatus?.('closed'); });
 
       source.onopen = () => {
-        attempts = 0;
         onStatus?.('connected');
       };
 
       source.onmessage = (e) => {
         try {
           const parsed = JSON.parse(e.data) as CascadeEvent;
+          attempts = 0;
+          lastEventId = parsed.event_id;
           onEvent(parsed);
         } catch {
           onError?.(new Error(`Failed to parse SSE message: ${e.data}`));

@@ -52,6 +52,7 @@ export function LiveIncidentsEntry() {
     try {
       const created = await api.createRun({ seed, scenario, policy, purpose: 'operator_review' });
       localStorage.setItem('cascade-demo-run-id', created.id);
+      window.dispatchEvent(new Event('cascade-selection-changed'));
       router.push(`/incidents/${created.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create run');
@@ -83,7 +84,7 @@ export function LiveIncidentsEntry() {
           <div style={muted}>Adjust the seed to replay the same conditions or generate a new telemetry pattern.</div>
         </div>
         <label style={muted}>Seed
-          <input type="number" min="0" value={seed}
+          <input type="number" min="0" max="9007199254740991" step="1" value={seed}
                  onChange={(e) => setSeed(Math.max(0, Number(e.target.value) || 0))}
                  style={{ ...input, width: 100, marginLeft: 8 }} />
         </label>
@@ -104,7 +105,7 @@ export function LiveIncidentsEntry() {
 
       {error && (
         <div role="alert" className="surface" style={{ padding: 16, border: '1px solid var(--danger)', color: 'var(--danger)' }}>
-          {error}. Start the backend with <code>python -m backend.api</code> and reload.
+          {error}. <button type="button" onClick={load}>Retry</button>
         </div>
       )}
 

@@ -88,6 +88,9 @@ export interface Plan {
   simulated: boolean;
   purpose?: 'policy_comparison' | 'operator_review';
   reasons: string[];
+  decision_tick?: number;
+  operator_reason?: string;
+  decided_at?: string;
   /** AI-loop provenance on ai_coordinated plans. */
   ai?: AIDecisionInfo;
   /** Present after an operator approves a local sandbox replay. */
@@ -194,6 +197,9 @@ export interface AIDecisionInfo {
   calls?: number;
   live_decisions?: number;
   fallbacks?: number;
+  model_selected_actions?: string[];
+  model_risk?: number;
+  safety_reasons?: string[];
   diagnosis?: {
     cause: string;
     affected: string[];
@@ -254,6 +260,8 @@ export interface AdminStatus {
 
 /** Local what-if replay of a candidate plan against the recorded seed. */
 export interface BacktestResult {
+  decision_tick: number;
+  replay_mode: 'single_decision';
   plan_id: string;
   run_id: string;
   seed: number;

@@ -52,8 +52,9 @@ export function Header({ onMenuToggle, menuOpen }: HeaderProps) {
     const update = () => setRunId(localStorage.getItem('cascade-demo-run-id') ?? 'No run selected');
     update();
     window.addEventListener('cascade-run-changed', update);
+    window.addEventListener('cascade-selection-changed', update);
     window.addEventListener('storage', update);
-    return () => { window.removeEventListener('cascade-run-changed', update); window.removeEventListener('storage', update); };
+    return () => { window.removeEventListener('cascade-run-changed', update); window.removeEventListener('cascade-selection-changed', update); window.removeEventListener('storage', update); };
   }, []);
 
   return (
@@ -118,7 +119,7 @@ export function Header({ onMenuToggle, menuOpen }: HeaderProps) {
           <path d="M6 3.5V6L7.5 7.5" stroke="currentColor" strokeWidth="1.2" strokeLinecap="round" strokeLinejoin="round" />
         </svg>
         <span style={{ fontFamily: 'var(--font-mono)', fontWeight: 600, letterSpacing: '-0.01em' }}>
-          Run {typeof runId === 'string' ? runId.slice(0, 8) : '—'}
+          {runId === 'No run selected' ? runId : `Run ${runId.slice(0, 8)}`}
         </span>
         <span style={{ color: 'var(--border)', margin: '0 2px' }}>·</span>
         <span

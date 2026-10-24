@@ -2,6 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { EventAudit } from './EventAudit';
+import { Pagination } from './Pagination';
+import { ServiceTopology } from './ServiceTopology';
 import { api } from '@/lib/api';
 import {
   POLICIES, POLICY_LABEL, POLICY_BLURB, SCENARIOS, SCENARIO_LABEL, SCENARIO_BLURB,
@@ -46,11 +50,16 @@ function mergeEvents(prior: CascadeEvent[], tail: CascadeEvent[]): CascadeEvent[
 }
 
 export function BackendDemo({ view, runId, planId }: { view: View; runId?: string; planId?: string }) {
-  const [run, setRun] = useState<Run | null>(null);
+  const router = useRouter();
+  const [loadVersion, setLoadVersion] = useState(0);
+  const [planPage, setPlanPage] = useState(0);
+  const [comparisonContext, setComparisonContext] = useState('');
+  const [loadedRun, setRun] = useState<Run | null>(null);
+  const run = !runId || loadedRun?.id === runId ? loadedRun : null;
   const [topology, setTopology] = useState<Topology | null>(null);
   const [events, setEvents] = useState<CascadeEvent[]>([]);
   const [plans, setPlans] = useState<Plan[]>([]);
-  const [comparison, setComparison] = useState<Run[]>([]);
+  const [comparison, setComparison] = useState<(Run & { provenance?: string })[]>([]);
   const [seed, setSeed] = useState(SEED);
   const [policy, setPolicy] = useState<RunPolicy>('ai_coordinated');
   const [scenario, setScenario] = useState<RunScenario>('db_slowdown');
@@ -59,16 +68,20 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
   const [noRun, setNoRun] = useState(false);
   const [backtests, setBacktests] = useState<Record<string, BacktestResult>>({});
   const [backtesting, setBacktesting] = useState<string | null>(null);
-  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const pollRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pollGeneration = useRef(0);
+  const refreshVersion = useRef(0);
   const lastEventIdRef = useRef<string | undefined>(undefined);
 
   const refresh = useCallback(async (id: string, mode: 'full' | 'tail' = 'full') => {
     // A tail fetch uses the backend's Last-Event-ID resume so a running run
     // never re-downloads its whole event history on every poll tick.
+    const version = ++refreshVersion.current;
     const after = mode === 'tail' ? lastEventIdRef.current : undefined;
     const [current, trace, candidates] = await Promise.all([
       api.getRun(id), api.getEvents(id, after), api.listPlans(id),
     ]);
+    if (version !== refreshVersion.current) return current;
     if (mode === 'full') {
       lastEventIdRef.current = trace.at(-1)?.event_id;
       setEvents(trace);
@@ -81,21 +94,27 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
   }, []);
 
   const pollWhileRunning = useCallback((id: string) => {
-    if (pollRef.current) clearInterval(pollRef.current);
-    pollRef.current = setInterval(async () => {
+    const generation = ++pollGeneration.current;
+    if (pollRef.current) clearTimeout(pollRef.current);
+    let failures = 0;
+    const poll = async () => {
+      if (generation !== pollGeneration.current) return;
       try {
         const current = await refresh(id, 'tail');
+        failures = 0;
         if (current.state !== 'running') {
-          if (pollRef.current) clearInterval(pollRef.current);
-          pollRef.current = null;
-          // Final full refresh picks up anything the tail window missed.
           await refresh(id);
-          window.dispatchEvent(new Event('cascade-run-changed'));
+          return;
         }
-      } catch {
-        /* transient poll failure; the next tick retries */
+      } catch (reason) {
+        if (++failures >= 3) {
+          setError(reason instanceof Error ? reason.message : 'Connection lost. Retry to resume this run.');
+          return;
+        }
       }
-    }, 2000);
+      if (generation === pollGeneration.current) pollRef.current = setTimeout(poll, 2000);
+    };
+    pollRef.current = setTimeout(poll, 2000);
   }, [refresh]);
 
   useEffect(() => {
@@ -108,16 +127,19 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
         // empty state pointing at Incidents where runs are started.
         const history = await api.listRuns();
         let current: Run | undefined;
-        if (runId) current = await api.getRun(runId).catch(() => undefined);
-        if (!current) current = history[0];
+        if (runId) current = await api.getRun(runId);
+        else current = history[0];
+        if (cancelled) return;
         if (!current) {
-          if (!cancelled) { setNoRun(true); setError(''); }
+          if (!cancelled) { setRun(null); setEvents([]); setPlans([]); setNoRun(true); setError(''); localStorage.removeItem(KEY); window.dispatchEvent(new Event('cascade-selection-changed')); }
           return;
         }
         setNoRun(false);
         localStorage.setItem(KEY, current.id);
         const id = current.id;
-        setPolicy(current.policy); setScenario(current.scenario);
+        setSeed(current.seed); setPolicy(current.policy); setScenario(current.scenario);
+        setPlanPage(0);
+        window.dispatchEvent(new Event('cascade-selection-changed'));
         await refresh(id);
         if (!cancelled) {
           setTopology(await api.getTopology());
@@ -125,7 +147,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
           if (current.state === 'running') pollWhileRunning(id);
         }
       } catch (reason) {
-        if (!cancelled) setError(reason instanceof Error ? reason.message : 'Could not load the sandbox run');
+        if (!cancelled) { setRun(null); localStorage.removeItem(KEY); window.dispatchEvent(new Event('cascade-selection-changed')); setError(reason instanceof Error ? reason.message : 'Could not load the sandbox run'); }
       }
     }
     load();
@@ -133,15 +155,18 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
     window.addEventListener('cascade-run-changed', onRunChanged);
     return () => {
       cancelled = true;
+      refreshVersion.current += 1;
       window.removeEventListener('cascade-run-changed', onRunChanged);
-      if (pollRef.current) clearInterval(pollRef.current);
+      pollGeneration.current += 1;
+      if (pollRef.current) clearTimeout(pollRef.current);
     };
-  }, [runId, refresh, pollWhileRunning]);
+  }, [runId, refresh, pollWhileRunning, loadVersion]);
 
   const decisions = events.filter((event): event is DecisionEvent => event.kind === 'decision');
   const executions = events.filter((event): event is ExecutionEvent => event.kind === 'execution');
   const candidatePlans = plans.filter((plan) => plan.actions.length);
-  const visiblePlans = candidatePlans.slice(0, 12);
+  const currentPlanPage = Math.min(planPage, Math.max(0, Math.ceil(candidatePlans.length / 12) - 1));
+  const visiblePlans = candidatePlans.slice(currentPlanPage * 12, (currentPlanPage + 1) * 12);
   const aiDecisions = useMemo(() =>
     decisions.filter((event) => {
       const info = event.payload.ai;
@@ -175,11 +200,12 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
     try {
       const created = await api.createRun({ seed, scenario, policy, purpose: 'operator_review' });
       localStorage.setItem(KEY, created.id);
-      window.dispatchEvent(new Event('cascade-run-changed'));
-      // Keep run-scoped URLs in sync without navigating anywhere.
-      if (runId && (view === 'incident' || view === 'plans')) {
-        window.history.replaceState(null, '', `/${view === 'incident' ? 'incidents' : 'plans'}/${created.id}`);
+      window.dispatchEvent(new Event('cascade-selection-changed'));
+      if (runId) {
+        router.push(`/incidents/${created.id}`);
+        return;
       }
+      setPlanPage(0);
       await refresh(created.id);
       if (created.state === 'running') pollWhileRunning(created.id);
     } catch (reason) {
@@ -191,7 +217,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
     setBusy(true); setError('');
     try {
       await api.decidePlan(plan.id, true, 'Operator approved synthetic sandbox replay');
-      setPlans(await api.listPlans(plan.run_id));
+      await refresh(plan.run_id);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Approval failed');
     } finally { setBusy(false); }
@@ -201,7 +227,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
     setBusy(true); setError('');
     try {
       await api.decidePlan(plan.id, false, 'Operator rejected plan');
-      setPlans(await api.listPlans(plan.run_id));
+      await refresh(plan.run_id);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not reject plan');
     } finally { setBusy(false); }
@@ -212,20 +238,26 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
     try {
       const result = await api.backtestPlan(plan.id);
       setBacktests((prior) => ({ ...prior, [plan.id]: result }));
-      setPlans(await api.listPlans(plan.run_id));
+      await refresh(plan.run_id);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Backtest failed');
     } finally { setBacktesting(null); }
   }
 
   async function compare() {
-    setBusy(true); setError('');
+    setBusy(true); setError(''); setComparison([]);
+    setComparisonContext(`Seed ${seed} · ${SCENARIO_LABEL[scenario]} · 110 ticks · policy comparison`);
     try {
       // All five arms run concurrently against the threaded sandbox server;
       // each AI arm still waits for its own background run to finish.
       const results = await Promise.all(POLICIES.map(async (arm) => {
         const created = await api.createRun({ seed, scenario, policy: arm, purpose: 'policy_comparison' });
-        return created.state === 'running' ? await waitUntilDone(created.id) : created;
+        const completed = created.state === 'running' ? await waitUntilDone(created.id) : created;
+        if (completed.state === 'failed') throw new Error(completed.failed_reason || 'Comparison run failed');
+        const plans = await api.listPlans(completed.id);
+        const provenance = arm === 'ai_coordinated'
+          ? (plans.some(p => p.ai?.live) ? 'Model (may include fallback)' : plans.some(p => p.ai?.fallback_reason) ? 'Rule fallback' : 'No model calls; actions held') : 'Deterministic';
+        return { ...completed, provenance };
       }));
       setComparison(results);
     } catch (reason) {
@@ -283,7 +315,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
         </div>
         <span className="page-mode-tag"><span aria-hidden="true" /> Simulated environment</span>
       </div>
-      {error && <div role="alert" style={{ ...card, borderColor: 'var(--danger)', color: 'var(--danger)' }}>{error}. Start the backend with <code>python -m backend.api</code> and reload.</div>}
+      {error && <div role="alert" style={{ ...card, borderColor: 'var(--danger)', color: 'var(--danger)' }}>{error} <button type="button" onClick={() => { setError(''); setLoadVersion(v => v + 1); }}>Retry loading</button></div>}
       {!run && !error && !noRun && <div style={card}>Loading a backend run…</div>}
       {!run && !error && noRun && (
         <section className="empty-state" aria-labelledby="empty-state-title">
@@ -308,6 +340,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
         <>
           {view !== 'overview' && (
           <section className="run-context" style={{ ...card, display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+            <div className="run-context-identity">Run {run.id.slice(0, 8)} · Seed {run.seed} · {SCENARIO_LABEL[run.scenario]} · {run.state}</div>
             <label style={muted}>Seed
               <input type="number" min="0" value={seed} onChange={(e) => setSeed(Math.max(0, Number(e.target.value) || 0))} style={{ ...input, width: 90, marginLeft: 8 }} />
               <button type="button" onClick={() => setSeed(Math.floor(Math.random() * 100000))} style={{ ...ghost, padding: '6px 10px', marginLeft: 6, fontSize: 12 }}>Random</button>
@@ -325,7 +358,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
             <button type="button" onClick={restart} disabled={busy} style={action}>Start run</button>
           </section>
           )}
-          <section style={{ ...card, display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+          {view === 'overview' && <section style={{ ...card, display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
             <div style={{ flex: 1, minWidth: 220 }}>
               <strong>Run {run.id.slice(0, 8)} · {POLICY_LABEL[run.policy]}</strong>
               <div style={muted}>
@@ -335,8 +368,8 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
               </div>
             </div>
             <Link href="/incidents" style={{ color: 'var(--accent)', fontWeight: 600 }}>Start a new run in Incidents →</Link>
-          </section>
-          {view === 'overview' && latestAiDecision && <AiOverviewPanel event={latestAiDecision} run={run} />}
+          </section>}
+          {(view === 'overview' || view === 'incident') && latestAiDecision && <AiOverviewPanel event={latestAiDecision} run={run} />}
           {view === 'overview' && !latestAiDecision && (
             <section className="ai-discovery-panel">
               <div>
@@ -361,7 +394,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
           {(view === 'overview' || view === 'incident') && (
             <>
               {view === 'incident' && <SectionHeader index={numbering.metrics} title="Outcome metrics" />}
-              <section className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
+              <section className="kpi-grid">
                 <KpiCard label="Transactions offered" value={number(run.metrics?.unique_offered)}
                          context="simulated user requests during the run" />
                 <KpiCard label="Transactions failed" value={number(run.metrics?.unique_failed)}
@@ -470,35 +503,15 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
                 <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
                   <Link href={'/plans/' + run.id}>Review candidate plans</Link>
                   <Link href="/experiments">Compare five policies</Link>
-                  <Link href="/audit">Inspect event log</Link>
+                  <Link href={`/audit?run=${run.id}`}>Inspect event log</Link>
                 </div>
               </section>
               <section style={card}>
                 <SectionHeader index={numbering.topo} title="Service topology" />
-                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 10 }}>
-                  {topology?.nodes.map((node) => {
-                    const stats = servicePeaks[node.id];
-                    const faulted = faultedService[run.scenario] === node.id;
-                    const hot = stats ? stats.peak >= 150 : false;
-                    const warm = stats ? stats.peak >= 50 && !hot : false;
-                    return <div key={node.id} style={{
-                      padding: 12, borderRadius: 8,
-                      border: `1px solid ${faulted ? 'var(--warning)' : 'var(--border)'}`,
-                      background: faulted ? 'var(--warning-muted)' : undefined,
-                    }}>
-                      <strong>{node.id}</strong>
-                      {faulted && <span style={{ ...muted, marginLeft: 6, color: 'var(--warning)' }}>· faulted here</span>}
-                      <div style={muted}>capacity {node.capacity}/tick</div>
-                      <div style={{ ...muted, color: hot ? 'var(--danger)' : warm ? 'var(--warning)' : undefined }}>
-                        {stats ? `peak backlog ${stats.peak.toLocaleString()} · final ${stats.last.toLocaleString()}` : 'backlog —'}
-                      </div>
-                    </div>;
-                  })}
-                </div>
-                <p style={{ ...muted, marginTop: 10 }}>Backlog numbers are this run&apos;s actual per-service queue depths. Dependencies: {topology?.edges.map((edge) => edge.from + ' → ' + edge.to).join(' · ')}</p>
+                <ServiceTopology topology={topology} fault={faultedService[run.scenario]} queues={servicePeaks} />
               </section>
               <section style={card}>
-                <SectionHeader index={numbering.dec} title="Decisions" subtitle="Every action this policy took, tick by tick." />
+                <SectionHeader index={numbering.dec} title="Decisions" subtitle="Proposed actions by tick. Execution is recorded separately." />
                 {decisionRows.length ? decisionRows.map((event) => <div key={event.event_id} style={{ borderTop: '1px solid var(--border)', padding: '10px 0' }}>
                   {event.kind === 'execution'
                     ? <>Tick {event.tick}: {actionLabel(event.payload.action)} <span style={muted}>· by {event.payload.agent_id}</span></>
@@ -520,6 +533,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
               <strong>Choose the next step</strong>
               <p style={{ ...muted, marginTop: 4 }}>Approve a plan for a local replay, send it to the Experiment Lab for a what-if comparison, or reject it. Every outcome is labeled simulated; there is no live server connection.</p>
             </div>
+            <Pagination name="Plans" page={currentPlanPage} count={candidatePlans.length} size={12} onPage={setPlanPage} />
             {visiblePlans.map((plan) => {
               const info = plan.ai;
               const result = backtests[plan.id] ?? plan.backtest;
@@ -527,9 +541,11 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
                 <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 260 }}>
                     <strong>{actionListLabel(plan.actions)}</strong>
+                    <div style={muted}>Tick {plan.decision_tick ?? '—'} · {plan.ai ? (plan.ai.live ? `Model: ${plan.ai.model}` : 'Rule fallback') : 'Rule coordinator'}</div>
                     {info?.diagnosis && <div style={muted}>diagnosis: {info.diagnosis.cause} ({info.diagnosis.severity})</div>}
-                    <div style={muted}>Risk estimate {plan.predicted_risk} · {plan.reasons.join('; ')}</div>
-                    <span style={{ ...chip, color: plan.status === 'candidate' ? 'var(--warning)' : 'var(--success)', border: '1px solid currentColor', marginTop: 8 }}>{plan.status.toUpperCase()}</span>
+                    <div style={muted}>Enforced risk {plan.predicted_risk}</div>
+                    <details><summary>Decision evidence</summary><p style={muted}>{plan.reasons.join('; ')}</p>{plan.ai?.safety_reasons && <p style={muted}>{plan.ai.safety_reasons.join('; ')}</p>}<small>{plan.id}</small></details>
+                    <span style={{ ...chip, color: plan.status === 'rejected' ? 'var(--danger)' : plan.status === 'approved' ? 'var(--success)' : 'var(--warning)', border: '1px solid currentColor', marginTop: 8 }}>{plan.status.toUpperCase()}</span>
                   </div>
                   {plan.status === 'candidate' && <>
                     <Link href={`/experiments?run=${encodeURIComponent(run.id)}&plan=${encodeURIComponent(plan.id)}`} style={{ ...ghost, textDecoration: 'none' }}>Send to Experiment Lab</Link>
@@ -546,14 +562,14 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
           {view === 'experiments' && <section className="experiment-panel" style={card}>
             <SectionHeader index="01" title="The Experiment Lab" subtitle="Replay one candidate against the same synthetic incident before deciding whether to approve it." />
             {(() => {
-              const labPlan = candidatePlans.find((candidate) => candidate.id === planId) ?? candidatePlans[0];
-              if (!labPlan) return <p style={muted}>No candidate actions in this run. Start an AI planner or coordinator incident first.</p>;
+              const labPlan = planId ? candidatePlans.find((candidate) => candidate.id === planId) : candidatePlans[0];
+              if (!labPlan) return <p role={planId ? 'alert' : undefined} style={muted}>{planId ? 'Requested plan not found in this run. Return to operator review to select a plan.' : 'No candidate actions in this run. Start an AI planner or coordinator incident first.'}</p>;
               const result = backtests[labPlan.id] ?? labPlan.backtest;
               return <div style={{ ...card, margin: '12px 0 18px', borderColor: 'var(--accent)' }}>
                 <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
                   <div style={{ flex: 1, minWidth: 220 }}>
                 <strong>{actionListLabel(labPlan.actions)}</strong>
-                    <p style={muted}>Run {run.id.slice(0, 8)} · predicted risk {labPlan.predicted_risk} · {labPlan.reasons.join('; ')}</p>
+                    <p style={muted}>Run {run.id.slice(0, 8)} · tick {labPlan.decision_tick} · predicted risk {labPlan.predicted_risk} · {labPlan.reasons.join('; ')}</p>
                   </div>
                   <button type="button" disabled={busy || backtesting === labPlan.id} onClick={() => backtest(labPlan)} style={action}>
                     {backtesting === labPlan.id ? 'Running replay…' : result ? 'Replay again' : 'Run synthetic replay'}
@@ -564,15 +580,16 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
               </div>;
             })()}
             <ul style={{ ...muted, paddingLeft: 20, display: 'grid', gap: 6, marginBottom: 16 }}>
-              <li><strong style={{ color: 'var(--text-primary)' }}>Plan replay.</strong> A no-action baseline is compared with the chosen action combination, including failures, successes, queues, database connections, and recovery timing.</li>
+              <li><strong style={{ color: 'var(--text-primary)' }}>Plan replay.</strong> The recorded prefix is replayed identically; the candidate is applied once at its recorded tick and compared with holding at that tick, including failures, successes, queues, database connections, and recovery timing.</li>
               <li><strong style={{ color: 'var(--text-primary)' }}>Compare policies.</strong> Run the same incident under all five policies and compare outcomes. One seed is a demonstration, not a statistical result.</li>
             </ul>
             <button type="button" disabled={busy} onClick={compare} style={action}>{busy ? 'Running…' : 'Run comparison on this seed'}</button>
             {comparison.length > 0 && <div style={{ overflowX: 'auto', marginTop: 18 }}>
-              <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead><tr><th>Policy</th><th>Unique failed</th><th>Actions</th><th>Recovery tick</th><th>Decision p50 ms</th><th>Decision p95 ms</th></tr></thead>
+              <p data-testid="comparison-context" style={muted}>{comparisonContext}</p>
+              <table aria-label="Policy comparison" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                <thead><tr><th>Policy / source</th><th>Unique failed</th><th>Actions</th><th>Recovery tick</th><th>Decision p50 ms</th><th>Decision p95 ms</th></tr></thead>
                 <tbody>{comparison.map((arm) => <tr key={arm.id} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td style={{ padding: 10 }}>{POLICY_LABEL[arm.policy]}</td><td>{number(arm.metrics?.unique_failed)}</td><td>{number(arm.metrics?.actions_executed)}</td>
+                  <td style={{ padding: 10 }}>{POLICY_LABEL[arm.policy]}<br /><small>{arm.provenance}</small></td><td>{number(arm.metrics?.unique_failed)}</td><td>{number(arm.metrics?.actions_executed)}</td>
                   <td>{arm.metrics?.sustained_recovery_time === -1 ? 'Not reached' : number(arm.metrics?.sustained_recovery_time)}</td>
                   <td>{arm.runtime?.decision_latency_p50_ms ?? '—'}</td><td>{arm.runtime?.decision_latency_p95_ms ?? '—'}</td>
                 </tr>)}</tbody>
@@ -581,14 +598,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
               <p style={muted}>One seed is a demonstration, not a statistical result.</p>
             </div>}
           </section>}
-          {view === 'audit' && <section className="event-audit-panel" style={card}>
-            <SectionHeader index="01" title={`Backend events (${events.length})`} subtitle="First 80 events; each has a tick and full provenance." />
-            <div style={{ maxHeight: 650, overflowY: 'auto' }}>{events.slice(0, 80).map((event) =>
-              <details key={event.event_id} style={{ padding: '9px 0', borderTop: '1px solid var(--border)' }}>
-                <summary style={{ cursor: 'pointer' }}>Tick {event.tick} · {event.kind} · {event.event_id}</summary>
-                <pre style={{ whiteSpace: 'pre-wrap', overflowWrap: 'anywhere', fontSize: 11 }}>{JSON.stringify(event.payload, null, 2)}</pre>
-              </details>)}</div>
-          </section>}
+          {view === 'audit' && <EventAudit key={run.id} events={events} />}
         </>
       )}
     </main>
@@ -610,7 +620,7 @@ function BacktestVerdict({ result }: { result: BacktestResult }) {
           {delta === 0 ? 'same failed transaction count' : `${delta > 0 ? '+' : ''}${delta.toLocaleString()} failed transactions vs doing nothing`}
         </span>
         <span style={muted}>
-          {result.plan_failed.toLocaleString()} failed with the plan vs {result.baseline_failed.toLocaleString()} with no action · seed {result.seed} · {result.arms[0].horizon_ticks} ticks
+          {result.plan_failed.toLocaleString()} failed with the plan vs {result.baseline_failed.toLocaleString()} with no action · seed {result.seed} · {result.arms[0].horizon_ticks} ticks · single decision at tick {result.decision_tick}
         </span>
       </div>
       <div style={{ overflowX: 'auto', marginTop: 8 }}>
@@ -642,7 +652,7 @@ function ProbeTable({ probes }: { probes: AIProbeOutcome[] }) {
     <div style={{ overflowX: 'auto', marginTop: 10 }}>
       <table style={{ borderCollapse: 'collapse', fontSize: 12, textAlign: 'left' }}>
         <thead><tr style={{ color: 'var(--text-muted)' }}>
-          <th style={{ padding: '4px 14px 4px 0' }}>Probe</th><th style={{ padding: '4px 14px 4px 0' }}>Unique failed</th>
+          <th style={{ padding: '4px 14px 4px 0' }}>Repeated-subset probe</th><th style={{ padding: '4px 14px 4px 0' }}>Unique failed</th>
           <th style={{ padding: '4px 14px 4px 0' }}>Succeeded</th><th style={{ padding: '4px 14px 4px 0' }}>Actions</th>
         </tr></thead>
         <tbody>{probes.map((probe, index) => (
