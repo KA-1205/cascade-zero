@@ -10,3 +10,6 @@ dist/
 *.log
 experiments/outputs/
 docs/
+# Browser verification outputs
+frontend/app/test-results/
+frontend/app/playwright-report/

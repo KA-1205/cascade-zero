@@ -17,6 +17,7 @@ def api(monkeypatch):
     api_module._runs.clear()
     api_module._plans.clear()
     api_module._approval_keys.clear()
+    api_module._run_starts.clear()
     server = ThreadingHTTPServer(('127.0.0.1', 0), Handler)
     thread = threading.Thread(target=server.serve_forever, daemon=True)
     thread.start()
@@ -102,3 +103,21 @@ def test_events_arrive_before_simulation_finishes(api, monkeypatch):
             assert response.read(), 'events must be published before the run finishes'
     finally:
         release.set()
+
+
+def test_live_stream_resumes_with_event_ids_and_completes(api):
+    _, run = call(api, '/v1/runs', {'seed': 137, 'scenario': 'db_slowdown', 'policy': 'coordinated'})
+    after = f"{run['id']}:000002"
+    with urlopen(api + f"/v1/runs/{run['id']}/events?stream=1&after={after}") as response:
+        frames = response.read().decode()
+    assert frames.startswith(f"id: {run['id']}:000003\n")
+    assert 'event: done\ndata: {}' in frames
+    assert f'id: {after}\n' not in frames
+
+
+def test_run_rate_limit_is_explicit(api, monkeypatch):
+    monkeypatch.setattr(api_module, 'MAX_RUNS_PER_MINUTE', 1)
+    api_module._run_starts.clear()
+    body = {'seed': 137, 'scenario': 'db_slowdown', 'policy': 'none'}
+    assert call(api, '/v1/runs', body)[0] == 201
+    assert call(api, '/v1/runs', body)[0] == 429

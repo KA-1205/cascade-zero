@@ -57,7 +57,7 @@ Cascade Zero is a safety firewall and constraint coordinator for autonomous inci
   - `pytest`: Unit and integration testing harness
 
 ### Frontend
-- **Node.js**: 18.x or later
+- **Node.js**: 22.x or later
 - **Package Manager**: `npm`
 - **Framework**: Next.js 16 (App Router)
 - **UI & Styling**: React 19, Tailwind CSS 4, Recharts
@@ -75,14 +75,14 @@ python3 -m venv .venv
 source .venv/bin/activate
 
 # Install development dependencies
-pip install -e .
+pip install -e '.[dev]'
 ```
 
 ### 2. Environment
 
 Copy `.env.example` to `.env` and set `GEMINI_API_KEY` to a Google AI Studio
 key (optional), and `CASCADE_APPROVAL_TOKEN` to any local value (required for
-plan approval and backtesting). Both servers load the repo-root `.env`
+plan approval and backtesting). Set `CASCADE_OPERATOR_PASSWORD` to a private password for the frontend operator sign-in (username defaults to `operator`). The frontend fails closed if it is unset. Use HTTPS when hosted. Both servers load the repo-root `.env`
 automatically, so one file configures everything; without it, set the
 variables in each shell instead.
 
@@ -147,7 +147,7 @@ Navigate to `http://localhost:3000`. Start an operator-review run with one of
 the generated scenarios (including noisy / delayed telemetry) and a seed. The default AI planner diagnoses synthetic
 telemetry and proposes actions while holding them for operator review. The
 operator can approve a local replay, send a candidate to the Experiment Lab,
-or reject it. Every approval in this workflow records a synthetic replay; no
+or reject it. Every approval records a single-decision synthetic replay at the candidate tick, after reconstructing its recorded prefix and using the original horizon; no
 external service is contacted. See
 [`DEMO_WORKFLOW.md`](DEMO_WORKFLOW.md) for the
 walkthrough, pitch, scenario trade-offs, and current evaluation limits. The
@@ -192,7 +192,7 @@ The backend deploys to Render and the frontend to Vercel, both from this repo.
    fallback runs).
 3. Once deployed, note the service URL (`https://cascade-zero-api.onrender.com`).
 
-The API binds loopback-only by default; hosted container binds (`0.0.0.0` plus
+Hosted non-health API requests require the bearer token; the authenticated frontend forwards it server-side. The API binds loopback-only by default; hosted container binds (`0.0.0.0` plus
 the injected `PORT`) require `CASCADE_ALLOW_PUBLIC_BIND=true`, which the
 blueprint sets. Approval/backtest endpoints always require the bearer token.
 
@@ -203,9 +203,10 @@ blueprint sets. Approval/backtest endpoints always require the bearer token.
 3. Add environment variables before the first build:
    - `CASCADE_API_ORIGIN` — the Render service URL from above (the Next server
      proxies `/v1/*` here, so no CORS is needed on the backend)
+   - `CASCADE_OPERATOR_PASSWORD` — a strong private operator password; the browser prompts for username `operator` and this password
+   - `CASCADE_OPERATOR_USERNAME` — optional override for `operator`
    - `CASCADE_APPROVAL_TOKEN` — the same token entered on Render
-4. Deploy. Changing `CASCADE_API_ORIGIN` later requires a redeploy, because the
-   proxy rewrite is resolved at build time.
+4. Deploy. The authenticated `/v1/*` route reads `CASCADE_API_ORIGIN` in the server at runtime. Apply environment changes through your hosting provider.
 
 ## Actual Limitations
 
@@ -214,3 +215,13 @@ blueprint sets. Approval/backtest endpoints always require the bearer token.
 - **Heuristic Risk Model (rule policies)**: The `coordinated` policy and the AI fallback path score joint-action risk with deterministic policy matrices and heuristic thresholds, not learned models.
 - **No Live Recovery Integration in the Demo Flow**: Operator approval records a local synthetic replay. It does not contact the optional integration adapters.
 - **Single-Node In-Memory State**: The API server manages active run states in memory and binds to loopback interfaces by default; persistent multi-tenant storage is not implemented.
+
+## Operator workflow fixes
+
+- The private frontend requires HTTP Basic operator authentication before viewing data or making decisions; the backend bearer token never enters the browser bundle. Cross-origin writes are rejected. This is one shared operator account, not a multi-tenant identity or role system.
+- Live model recommendations pass through the deterministic coordinator. Model risk above the policy threshold or stale telemetry holds the recommendation. The event retains both model and enforced decisions.
+- Candidate approval/backtest reconstructs the recorded action prefix and applies the chosen actions **once** at the recorded tick. AI planning probes remain repeated-subset experiments; those are distinct from candidate replays.
+- Plan pages are paginated. Audit pages filter, paginate, and export the complete retained event history, including operator approval/rejection receipts with time and reason. Receipts share the operator account identity; history is process-local and is not a durable compliance log.
+- Events are published incrementally. The UI polls resumable snapshots while a run is active; `/v1/runs/{id}/events?stream=1` offers a live stream with heartbeat, event IDs, completion notification, and Last-Event-ID/after resume.
+- Admission is capped at eight active runs and 60 starts per minute per process. The newest 100 runs are retained; older completed runs and their plans/decision keys are evicted. No production load capacity is claimed.
+- Frontend validation: `npm run lint`, `npx tsc --noEmit`, `npm run build`, and `npm run test:e2e` from `frontend/app`. First install the test browser with `npx playwright install chromium`. CI runs these checks with an isolated local backend and test-only credentials.

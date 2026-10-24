@@ -1,8 +1,9 @@
 openapi: 3.1.0
 info:
   title: Cascade Zero API
-  version: 1.0.0
+  version: 1.1.0
   description: Contract-first sandbox incident evaluation API. All demo results are simulated unless explicitly marked otherwise.
+security: [{bearerAuth: []}]
 servers:
   - url: http://localhost:8000
 paths:
@@ -19,6 +20,7 @@ paths:
   /v1/health:
     get:
       operationId: getHealth
+      security: []
       responses:
         '200': {description: Health status, content: {application/json: {schema: {type: object, properties: {status: {type: string}}}}}}
   /v1/topology:
@@ -40,9 +42,13 @@ paths:
         '200': {description: Runs, content: {application/json: {schema: {type: array, items: {$ref: '#/components/schemas/Run'}}}}}
     post:
       operationId: createRun
+      description: Hosted requests require bearer authentication. Loopback development may opt out. At most 8 active runs and 60 starts per minute; the newest 100 runs are retained.
       requestBody: {required: true, content: {application/json: {schema: {$ref: '#/components/schemas/RunRequest'}}}}
       responses:
         '201': {description: Created, content: {application/json: {schema: {$ref: '#/components/schemas/Run'}}}}
+        '400': {description: Invalid run request}
+        '403': {description: Forbidden}
+        '429': {description: Run capacity or rate limit reached}
   /v1/runs/{run_id}:
     get:
       operationId: getRun
@@ -52,7 +58,7 @@ paths:
   /v1/runs/{run_id}/events:
     get:
       operationId: streamRunEvents
-      description: SSE stream; each message conforms to events.schema.json.
+      description: Finite SSE snapshot by default. stream=1 keeps the connection open, sends event IDs and heartbeats, and ends with a named done event. Resume with Last-Event-ID or after. Each data message conforms to events.schema.json.
       parameters: [{name: run_id, in: path, required: true, schema: {type: string}}]
       responses:
         '200': {description: Server-sent events, content: {text/event-stream: {schema: {type: string}}}}
@@ -65,7 +71,7 @@ paths:
   /v1/plans/{plan_id}/backtest:
     post:
       operationId: backtestPlan
-      description: Local what-if replay of a candidate plan against the recorded seed; nothing live is touched. Requires operator auth.
+      description: Replays the recorded prefix and applies the candidate once at its decision tick, over the original horizon; nothing live is touched. Requires operator auth.
       parameters: [{name: plan_id, in: path, required: true, schema: {type: string}}]
       responses:
         '200': {description: Backtest verdict, content: {application/json: {schema: {type: object, additionalProperties: true}}}}
@@ -91,7 +97,7 @@ components:
       type: object
       required: [seed, scenario, policy]
       properties:
-        seed: {type: integer, minimum: 0}
+        seed: {type: integer, minimum: 0, maximum: 9007199254740991}
         scenario: {type: string, enum: [db_slowdown, payments_degradation, traffic_surge, telemetry_faults]}
         policy: {type: string, enum: [none, independent, guardrails, coordinated, ai_coordinated]}
         purpose: {type: string, enum: [policy_comparison, operator_review], default: policy_comparison}
