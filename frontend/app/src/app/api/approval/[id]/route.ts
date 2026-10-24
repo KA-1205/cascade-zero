@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireOperator } from '@/lib/operator-auth';
 
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = requireOperator(request);
+  if (denied) return denied;
   const token = process.env.CASCADE_APPROVAL_TOKEN;
   const key = request.headers.get('Idempotency-Key');
   if (!token) return NextResponse.json({ error: 'Sandbox approval token is not configured' }, { status: 503 });
@@ -16,6 +19,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}`, 'Idempotency-Key': key },
       body: await request.text(),
       cache: 'no-store',
+      signal: AbortSignal.timeout(30000),
     });
     return new NextResponse(response.status === 202 ? null : await response.text(), { status: response.status });
   } catch {

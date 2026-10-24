@@ -16,7 +16,7 @@ import math
 import random
 from time import perf_counter
 from collections import deque
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -199,7 +199,7 @@ class _Run:
     sensor_rng: random.Random | None = None
     tick: int = 0
     events: list[dict] = field(default_factory=list)
-    on_event: Any = None
+    on_event: Callable[[dict], None] | None = None
     transactions: list[_Transaction] = field(default_factory=list)
     queues: dict[str, deque] = field(default_factory=lambda: {
         name: deque() for name in ("gateway", "orders", "payments", "database")})
@@ -445,7 +445,7 @@ def _percentile(values: list[int], fraction: float) -> int | None:
 
 
 def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=None,
-             apply_actions: bool = True, on_event=None) -> dict:
+             apply_actions: bool = True, on_event: Callable[[dict], None] | None = None) -> dict:
     """Return immutable-by-convention result with trace, hash and unique-user metrics."""
     if seed < 0:
         raise ValueError("seed must be non-negative")

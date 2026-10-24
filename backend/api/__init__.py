@@ -153,7 +153,7 @@ def _admin_status() -> dict:
     from backend.ai.client import DEFAULT_MODEL
 
     with _lock:
-        stores = [(stored["run"], list(stored["events"])) for stored in _runs.values()]
+        stores = [(dict(stored["run"]), list(stored["events"])) for stored in _runs.values()]
     runs = [run for run, _ in stores]
     totals = {"offered": 0, "failed": 0, "succeeded": 0, "actions": 0}
     ai_live = ai_fallback = 0
@@ -240,18 +240,20 @@ def _execute_run(stored: dict, run: dict, request: dict, overlay: dict) -> None:
         result = simulate(request['seed'], request['policy'], overlay, plan=plan,
                           apply_actions=request.get('purpose') != 'operator_review',
                           on_event=publish)
-        run['metrics'] = {key: value for key, value in result['metrics'].items()
-                          if isinstance(value, (int, float)) and not isinstance(value, bool)}
-        run['runtime'] = result['runtime']
-        run['trace_hash'] = result['trace_hash']
-        run["state"] = "completed"
-    except Exception as exc:
+        with _lock:
+            run['metrics'] = {key: value for key, value in result['metrics'].items()
+                              if isinstance(value, (int, float)) and not isinstance(value, bool)}
+            run['runtime'] = result['runtime']
+            run['trace_hash'] = result['trace_hash']
+            run["state"] = "completed"
+    except Exception:
         # A failed simulation remains inspectable rather than escaping as an
-        # HTTP 500 and leaving an indefinitely running record. The stack goes
-        # to stderr and the cause lands on the run record for the operator.
+        # HTTP 500 and leaving an indefinitely running record. Detailed errors go
+        # to stderr; the run exposes a generic failure to the operator.
         traceback.print_exc()
-        run["state"] = "failed"
-        run["failed_reason"] = "Simulation failed; inspect the backend log for details."
+        with _lock:
+            run["state"] = "failed"
+            run["failed_reason"] = "Simulation failed; inspect the backend log for details."
     finally:
         with _changed:
             _changed.notify_all()
@@ -517,14 +519,14 @@ class Handler(BaseHTTPRequestHandler):
     def _authorize(self) -> bool:
         token = os.environ.get("CASCADE_APPROVAL_TOKEN")
         return bool(token) and hmac.compare_digest(
-            self.headers.get("Authorization") or "", f"Bearer {token}")
+            (self.headers.get("Authorization") or "").encode("utf-8"), f"Bearer {token}".encode("utf-8"))
 
     def _approve(self, plan_id: str) -> None:
         if not self._authorize():
             return self._send(403)
         key = self.headers.get("Idempotency-Key")
-        if not key:
-            return self._send(400, {"error": "Idempotency-Key required"})
+        if not key or len(key) > 128:
+            return self._send(400, {"error": "Idempotency-Key required (maximum 128 characters)"})
         try:
             body = self._body()
         except (ValueError, UnicodeDecodeError):

@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { requireOperator } from '@/lib/operator-auth';
 
 /** Same-origin proxy for plan backtests; the sandbox token never reaches the browser. */
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
+  const denied = requireOperator(request);
+  if (denied) return denied;
   const token = process.env.CASCADE_APPROVAL_TOKEN;
   if (!token) return NextResponse.json({ error: 'Approval token is not configured' }, { status: 503 });
   const { id } = await params;
@@ -15,6 +18,7 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
       headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
       body: '{}',
       cache: 'no-store',
+      signal: AbortSignal.timeout(30000),
     });
     return new NextResponse(response.status === 200 ? await response.text() : null,
                             { status: response.status });

@@ -13,6 +13,10 @@ services:
         value: "3.12.6"
       # Container hosts bind 0.0.0.0 and inject PORT; the API requires this
       # explicit opt-in before it will bind off-loopback.
+      - key: CASCADE_HOST
+        value: "0.0.0.0"
+      - key: CASCADE_REQUIRE_AUTH
+        value: "true"
       - key: CASCADE_ALLOW_PUBLIC_BIND
         value: "true"
       # Shared secret for approval/backtest endpoints. Enter one when
