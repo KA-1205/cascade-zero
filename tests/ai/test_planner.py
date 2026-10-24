@@ -177,3 +177,28 @@ def test_decision_schema_is_strict():
     import jsonschema
     with pytest.raises(jsonschema.ValidationError):
         jsonschema.validate({"diagnosis": "not-an-object"}, DECISION_SCHEMA)
+
+
+def test_model_cannot_execute_a_self_reported_high_risk_action():
+    result, _ = ai_run(Script(payload(selected_actions=['restart_service'], risk=1.0)))
+    live = [e for e in decision_events(result) if e['payload'].get('ai', {}).get('live')]
+    assert live
+    assert all(not e['payload']['actions'] for e in live)
+    assert all(e['payload']['ai']['model_risk'] == 1.0 for e in live)
+
+
+def test_model_selection_is_subject_to_the_deterministic_coordinator():
+    from backend.simulator import ObservableState
+    from types import MappingProxyType
+    from backend.agents import default_agents
+    state = ObservableState(tick=20, error_rate=0.9, latency=10, queue_depth=180,
+                            db_load=1.0, topology=MappingProxyType({}),
+                            incident_flags=('db_busy',), action_history=(),
+                            service_queues=MappingProxyType({}))
+    proposals = [p.to_proposal_dict() for agent in default_agents() if (p := agent.decide(state))]
+    selected = [p['action'] for p in proposals]
+    planner = AIPlanner(Script(payload(selected_actions=selected, risk=0.0)), 42)
+    decision = planner.plan(state, proposals)
+    assert decision.predicted_risk <= planner.fallback.threshold
+    assert decision.selected_actions == planner.fallback.plan(state, proposals).selected_actions
+    assert decision.extra['ai']['model_selected_actions'] == selected

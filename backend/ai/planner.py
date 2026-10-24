@@ -345,6 +345,12 @@ class AIPlanner:
             return self._fallback_decision(state, fresh, "selection_outside_proposals",
                                            base_extra)
 
+        model_selected = list(selected)
+        guarded = self.fallback.plan(state, [p for p in fresh if p["action"] in selected])
+        selected = (list(guarded.selected_actions)
+                    if payload["risk"] <= self.fallback.threshold
+                    and "telemetry_stale" not in state.incident_flags else [])
+
         self.last_model_tick = state.tick
         self.calls += 1
         self.live_decisions += 1
@@ -356,6 +362,8 @@ class AIPlanner:
             self.checks.append(_Check(decided_tick=state.tick, **case))
 
         reasons = list(payload["reasons"]) or [f"AI decision via {model_id}"]
+        if selected != model_selected:
+            reasons.append("Deterministic safety gate held one or more model recommendations.")
         extra = deepcopy(base_extra)
         extra["ai"].update({
             "live": True, "model": model_id, "fallback_reason": None,
@@ -363,8 +371,13 @@ class AIPlanner:
             "prompt_sha256": hashlib.sha256(prompt.encode()).hexdigest()[:16],
             "diagnosis": payload["diagnosis"],
             "probes": outcomes,
+            "model_selected_actions": model_selected,
+            "model_risk": payload["risk"],
+            "safety_reasons": guarded.reasons,
+            "calls": self.calls,
+            "live_decisions": self.live_decisions,
         })
-        return AIDecision(selected, float(payload["risk"]), reasons, extra)
+        return AIDecision(selected, guarded.predicted_risk if selected else 0.0, reasons, extra)
 
     def _fallback_decision(self, state: ObservableState, fresh: list[dict],
                            reason: str, base_extra: dict) -> AIDecision:
