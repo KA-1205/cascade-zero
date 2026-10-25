@@ -57,7 +57,6 @@ export function AdminDashboard() {
     <main className="console-page console-page--admin">
       <div className="page-heading">
         <div>
-          <p className="page-eyebrow">CASCADE ZERO <span aria-hidden="true">/</span> SYSTEM HEALTH</p>
           <h1>Project Admin</h1>
           <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
             Everything the system has done, updated whenever a run finishes.
@@ -79,66 +78,72 @@ export function AdminDashboard() {
                   tone={ai.provider_configured ? (liveRate !== null && liveRate > 0 ? 'good' : 'warn') : 'bad'} />
       </section>
 
-      <section className="surface dashboard-panel" style={{ padding: 20 }}>
-        <SectionHeader index="01" title="System status" subtitle="Backend and provider health right now." />
-        <LabeledRow label="Backend API">
-          <span style={{ color: 'var(--success)', fontWeight: 600 }}>● healthy</span>
-        </LabeledRow>
-        <LabeledRow label="Runs stored in memory">{status.backend.runs_stored} (cleared on restart)</LabeledRow>
-        <LabeledRow label="AI provider key (GEMINI_API_KEY)">
-          {ai.provider_configured
-            ? <span style={{ color: 'var(--success)' }}>configured</span>
-            : <span style={{ color: 'var(--danger)' }}>not set, so AI runs fall back to the rule coordinator</span>}
-        </LabeledRow>
-        <LabeledRow label="Default model">{ai.model}</LabeledRow>
-      </section>
+      <div className="admin-panels-grid">
+        <div className="admin-panel-col">
+          <section className="surface dashboard-panel" style={{ padding: 20 }}>
+            <SectionHeader index="01" title="System status" subtitle="Backend and provider health right now." />
+            <LabeledRow label="Backend API">
+              <span style={{ color: 'var(--success)', fontWeight: 600 }}>● healthy</span>
+            </LabeledRow>
+            <LabeledRow label="Runs stored in memory">{status.backend.runs_stored} (cleared on restart)</LabeledRow>
+            <LabeledRow label="AI provider key (GEMINI_API_KEY)">
+              {ai.provider_configured
+                ? <span style={{ color: 'var(--success)' }}>configured</span>
+                : <span style={{ color: 'var(--danger)' }}>not set, so AI runs fall back to the rule coordinator</span>}
+            </LabeledRow>
+            <LabeledRow label="Default model">{ai.model}</LabeledRow>
+          </section>
 
-      <section className="surface dashboard-panel" style={{ padding: 20 }}>
-        <SectionHeader index="02" title="AI engine" subtitle="How the decision engine has been performing." />
-        <LabeledRow label="Live model decisions">{ai.live_decisions.toLocaleString()}</LabeledRow>
-        <LabeledRow label="Labeled fallback decisions">{ai.fallback_decisions.toLocaleString()}</LabeledRow>
-        {Object.entries(ai.top_fallback_reasons).map(([reason, count]) => (
-          <LabeledRow key={reason} label={`↳ ${reason}`}>{count.toLocaleString()} decisions</LabeledRow>
-        ))}
-        {Object.keys(ai.top_fallback_reasons).length === 0 && (
-          <LabeledRow label="Fallback reasons">none recorded</LabeledRow>
-        )}
-      </section>
+          <section className="surface dashboard-panel" style={{ padding: 20 }}>
+            <SectionHeader index="02" title="Inference & Safety Policy Engine" subtitle="Autonomous recovery decision telemetry and fallback frequency." />
+            <LabeledRow label="Live model proposals">{ai.live_decisions.toLocaleString()}</LabeledRow>
+            <LabeledRow label="Deterministic fallback evaluations">{ai.fallback_decisions.toLocaleString()}</LabeledRow>
+            {Object.entries(ai.top_fallback_reasons).map(([reason, count]) => (
+              <LabeledRow key={reason} label={`↳ ${reason}`}>{count.toLocaleString()} decisions</LabeledRow>
+            ))}
+            {Object.keys(ai.top_fallback_reasons).length === 0 && (
+              <LabeledRow label="Fallback reasons">none recorded</LabeledRow>
+            )}
+          </section>
+        </div>
 
-      <section className="surface dashboard-panel" style={{ padding: 20 }}>
-        <SectionHeader index="03" title="Recent activity" subtitle="The latest runs, newest first." />
-        {runs.slice(0, 8).map((run) => (
-          <LabeledRow key={run.id} label={
-            <span>
-              {run.created_at ? new Date(run.created_at).toLocaleTimeString() : ''}
-              {' · '}{SCENARIO_LABEL[run.scenario] ?? run.scenario}
-            </span>
-          }>
-            <Link href={`/incidents/${run.id}`} style={{ color: 'var(--accent)' }}>
-              {POLICY_LABEL[run.policy] ?? run.policy}
-            </Link>
-            {' · '}{run.metrics?.unique_failed !== undefined
-              ? `${run.metrics.unique_failed.toLocaleString()} failed` : run.state}
-          </LabeledRow>
-        ))}
-        {runs.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No runs yet.</p>}
-      </section>
+        <div className="admin-panel-col">
+          <section className="surface dashboard-panel" style={{ padding: 20 }}>
+            <SectionHeader index="03" title="Recent activity" subtitle="The latest runs, newest first." />
+            {runs.slice(0, 8).map((run) => (
+              <LabeledRow key={run.id} label={
+                <span>
+                  {run.created_at ? new Date(run.created_at).toLocaleTimeString() : ''}
+                  {' · '}{SCENARIO_LABEL[run.scenario] ?? run.scenario}
+                </span>
+              }>
+                <Link href={`/incidents/${run.id}`} style={{ color: 'var(--accent)' }}>
+                  {POLICY_LABEL[run.policy] ?? run.policy}
+                </Link>
+                {' · '}{run.metrics?.unique_failed !== undefined
+                  ? `${run.metrics.unique_failed.toLocaleString()} failed` : run.state}
+              </LabeledRow>
+            ))}
+            {runs.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No runs yet.</p>}
+          </section>
 
-      <section className="surface dashboard-panel" style={{ padding: 20 }}>
-        <SectionHeader index="04" title="Scenarios & policies" subtitle="What can be simulated, and what each policy means." />
-        {Object.entries(status.scenarios).map(([name, config]) => (
-          <LabeledRow key={name} label={SCENARIO_LABEL[name as keyof typeof SCENARIO_LABEL] ?? name}>
-            actions: {config.actions_available.join(' · ')}
-          </LabeledRow>
-        ))}
-        {Object.keys(status.runs.by_policy).length > 0 && (
-          <LabeledRow label="Policies exercised">
-            {Object.entries(status.runs.by_policy)
-              .map(([policy, count]) => `${POLICY_LABEL[policy as keyof typeof POLICY_LABEL] ?? policy} ×${count}`)
-              .join(' · ')}
-          </LabeledRow>
-        )}
-      </section>
+          <section className="surface dashboard-panel" style={{ padding: 20 }}>
+            <SectionHeader index="04" title="Scenarios & policies" subtitle="What can be simulated, and what each policy means." />
+            {Object.entries(status.scenarios).map(([name, config]) => (
+              <LabeledRow key={name} label={SCENARIO_LABEL[name as keyof typeof SCENARIO_LABEL] ?? name}>
+                actions: {config.actions_available.join(' · ')}
+              </LabeledRow>
+            ))}
+            {Object.keys(status.runs.by_policy).length > 0 && (
+              <LabeledRow label="Policies exercised">
+                {Object.entries(status.runs.by_policy)
+                  .map(([policy, count]) => `${POLICY_LABEL[policy as keyof typeof POLICY_LABEL] ?? policy} ×${count}`)
+                  .join(' · ')}
+              </LabeledRow>
+            )}
+          </section>
+        </div>
+      </div>
     </main>
   );
 }

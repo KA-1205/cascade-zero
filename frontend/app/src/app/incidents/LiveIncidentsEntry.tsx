@@ -23,6 +23,20 @@ export function LiveIncidentsEntry() {
   const [seed, setSeed] = useState(() => Math.floor(Math.random() * 100000));
   const [scenario, setScenario] = useState<RunScenario>('db_slowdown');
   const [policy, setPolicy] = useState<RunPolicy>('ai_coordinated');
+  const [historySearch, setHistorySearch] = useState('');
+
+  const PRESETS: { label: string; scenario: RunScenario; seed: number; desc: string }[] = [
+    { label: '💥 Database Saturation', scenario: 'db_slowdown', seed: 42, desc: 'Shared DB capacity collapses; retry storms amplify pool exhaustion' },
+    { label: '💳 Payment Degradation', scenario: 'payments_degradation', seed: 88, desc: 'Payment downstream degrades; queue depth surges' },
+    { label: '🌊 Traffic Surge', scenario: 'traffic_surge', seed: 1024, desc: 'Arrivals spike past capacity; scaling coordinator active' },
+    { label: '📡 Telemetry Delay & Jitter', scenario: 'telemetry_faults', seed: 137, desc: 'Sensors lag & drop packets; coordinator holds unsafe actions' },
+  ];
+
+  const filteredRuns = runs.filter((r) => {
+    if (!historySearch) return true;
+    const q = historySearch.toLowerCase();
+    return String(r.seed).includes(q) || (SCENARIO_LABEL[r.scenario] ?? r.scenario).toLowerCase().includes(q) || r.policy.toLowerCase().includes(q);
+  });
 
   const load = useCallback(async () => {
     try {
@@ -53,6 +67,7 @@ export function LiveIncidentsEntry() {
       const created = await api.createRun({ seed, scenario, policy, purpose: 'operator_review' });
       localStorage.setItem('cascade-demo-run-id', created.id);
       window.dispatchEvent(new Event('cascade-selection-changed'));
+      window.dispatchEvent(new Event('cascade-run-changed'));
       router.push(`/incidents/${created.id}`);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to create run');
@@ -72,12 +87,39 @@ export function LiveIncidentsEntry() {
     <main className="console-page console-page--incidents">
       <div className="page-heading">
         <div>
-          <p className="page-eyebrow">CASCADE ZERO <span aria-hidden="true">/</span> INCIDENT WORKSPACE</p>
           <h1>Simulate an incident</h1>
           <p style={muted}>Choose a fault and policy. The telemetry is generated and repeatable; the operator controls every proposed recovery action.</p>
         </div>
         <span className="page-mode-tag"><span aria-hidden="true" /> No production connection</span>
       </div>
+      <section className="incident-presets-bar" aria-label="Incident Presets" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 12 }}>
+        {PRESETS.map((p) => (
+          <button
+            key={p.scenario}
+            type="button"
+            onClick={() => {
+              setScenario(p.scenario);
+              setSeed(p.seed);
+              setPolicy('ai_coordinated');
+            }}
+            style={{
+              padding: '12px 14px',
+              textAlign: 'left',
+              background: scenario === p.scenario && seed === p.seed ? 'var(--bg-hover)' : 'var(--bg-surface)',
+              border: `1px solid ${scenario === p.scenario && seed === p.seed ? 'var(--accent)' : 'var(--border)'}`,
+              borderRadius: 'var(--radius-card)',
+              cursor: 'pointer',
+              display: 'grid',
+              gap: 4,
+            }}
+          >
+            <strong style={{ fontSize: 13, color: 'var(--text-primary)' }}>{p.label}</strong>
+            <span style={{ fontSize: 11, color: 'var(--text-muted)', lineHeight: 1.4 }}>{p.desc}</span>
+            <span style={{ fontSize: 10, fontFamily: 'var(--font-mono)', color: 'var(--accent)', marginTop: 2 }}>Seed {p.seed}</span>
+          </button>
+        ))}
+      </section>
+
       <section className="incident-setup-panel" style={{ padding: 22, display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
         <div style={{ flex: 1, minWidth: 240 }}>
           <strong>Configure the scenario</strong>
@@ -88,6 +130,13 @@ export function LiveIncidentsEntry() {
                  onChange={(e) => setSeed(Math.max(0, Number(e.target.value) || 0))}
                  style={{ ...input, width: 100, marginLeft: 8 }} />
         </label>
+        <button
+          type="button"
+          onClick={() => setSeed(Math.floor(Math.random() * 100000))}
+          style={{ padding: '8px 12px', border: '1px solid var(--border)', background: 'var(--bg-elevated)', borderRadius: 'var(--radius-button)', fontSize: 12, cursor: 'pointer', color: 'var(--text-secondary)' }}
+        >
+          🎲 Random
+        </button>
         <label style={muted}>Scenario
           <select value={scenario} onChange={(e) => setScenario(e.target.value as RunScenario)} style={{ ...input, marginLeft: 8 }}>
             {SCENARIOS.map((name) => <option key={name} value={name} title={SCENARIO_BLURB[name]}>{SCENARIO_LABEL[name]}</option>)}
@@ -110,12 +159,23 @@ export function LiveIncidentsEntry() {
       )}
 
       <section className="surface run-history-panel" style={{ padding: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'baseline', gap: 12, marginBottom: 10 }}>
-          <h2 style={{ fontSize: 18 }}>Run history</h2>
-          <span style={muted}>every run this backend has executed; use Open run to inspect one</span>
+        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 12, marginBottom: 14, flexWrap: 'wrap' }}>
+          <div>
+            <h2 style={{ fontSize: 18 }}>Run history</h2>
+            <span style={muted}>every run this backend has executed; use Open run to inspect one</span>
+          </div>
+          <input
+            type="search"
+            placeholder="Filter runs by seed, scenario, or policy…"
+            value={historySearch}
+            onChange={(e) => setHistorySearch(e.target.value)}
+            style={{ ...input, minWidth: 260, fontSize: 12 }}
+          />
         </div>
         {loading ? <p style={muted}>Loading…</p> : runs.length === 0 ? (
           <p style={muted}>No runs yet. Start one above.</p>
+        ) : filteredRuns.length === 0 ? (
+          <p style={muted}>No runs matching &ldquo;{historySearch}&rdquo;.</p>
         ) : (
           <div style={{ overflowX: 'auto' }}>
             <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: 13 }}>
@@ -132,7 +192,7 @@ export function LiveIncidentsEntry() {
                 </tr>
               </thead>
               <tbody>
-                {runs.map((run) => (
+                {filteredRuns.map((run) => (
                   <tr key={run.id}
                       style={{ borderTop: '1px solid var(--border)' }}
                       onMouseEnter={(e) => (e.currentTarget.style.background = 'var(--bg-hover)')}

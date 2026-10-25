@@ -27,13 +27,29 @@ export function EventAudit({ events }: { events: CascadeEvent[] }) {
       <button type="button" onClick={download}>Export filtered events</button>
     </div>
     <Pagination name="Events" page={currentPage} count={filtered.length} size={40} onPage={setPage} />
-    {filtered.slice(currentPage * 40, (currentPage + 1) * 40).map(event => <details key={event.event_id}>
-      <summary>Tick {event.tick} · {event.kind}
-        {event.kind === 'verification' && typeof event.payload.approved === 'boolean' ? (event.payload.approved ? ' · approved' : ' · rejected') : ''}
-        <span className="event-timestamp">{event.timestamp?.replace('T', ' ').slice(0, 19)}</span>
-      </summary>
-      <pre>{JSON.stringify(event, null, 2)}</pre>
-    </details>)}
+    <div className="audit-events-stream">
+      {filtered.slice(currentPage * 40, (currentPage + 1) * 40).map(event => <details key={event.event_id}>
+        <summary>Tick {event.tick} · {event.kind}
+          {event.kind === 'verification' && typeof event.payload.approved === 'boolean' ? (event.payload.approved ? ' · approved' : ' · rejected') : ''}
+          <span className="event-timestamp">{event.timestamp?.replace('T', ' ').slice(0, 19)}</span>
+        </summary>
+        <div style={{ padding: '8px 12px', background: 'var(--bg-elevated)', borderTop: '1px solid var(--border-subtle)' }}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }}>
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                navigator.clipboard?.writeText(JSON.stringify(event, null, 2));
+              }}
+              style={{ fontSize: 11, padding: '3px 8px', borderRadius: 4, border: '1px solid var(--border)', background: 'var(--bg-surface)', cursor: 'pointer' }}
+            >
+              📋 Copy JSON
+            </button>
+          </div>
+          <pre>{JSON.stringify(event, null, 2)}</pre>
+        </div>
+      </details>)}
+    </div>
     {!filtered.length && <p>No matching events.</p>}
   </section>;
 }
