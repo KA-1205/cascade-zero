@@ -125,13 +125,11 @@ export function Header({ onMenuToggle, menuOpen }: HeaderProps) {
         <span
           className="header-run-info-label"
           style={{
-            fontWeight: 500,
-            background: 'var(--accent-gradient)',
-            WebkitBackgroundClip: 'text',
-            WebkitTextFillColor: 'transparent',
+            fontWeight: 600,
+            color: 'var(--accent)',
           }}
         >
-          synthetic run
+          Incident Replay
         </span>
       </div>
 

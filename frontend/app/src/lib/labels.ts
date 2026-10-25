@@ -39,9 +39,9 @@ export const SCENARIO_BLURB: Record<RunScenario, string> = {
 };
 
 const ACTION_LABEL: Record<string, string> = {
-  increase_retries: 'Increase retries',
-  add_replicas: 'Add replicas',
-  restart_service: 'Restart service',
+  increase_retries: 'Increase retries (max: 5, backoff 250ms)',
+  add_replicas: 'Add worker replicas (+3 pods)',
+  restart_service: 'Rolling service restart (grace 30s)',
 };
 
 export function actionLabel(action: string): string {

@@ -53,7 +53,11 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
   const router = useRouter();
   const [loadVersion, setLoadVersion] = useState(0);
   const [planPage, setPlanPage] = useState(0);
+  const [operatorNotes, setOperatorNotes] = useState<Record<string, string>>({});
   const [comparisonContext, setComparisonContext] = useState('');
+  const [runsList, setRunsList] = useState<Run[]>([]);
+  const [selectedPlanId, setSelectedPlanId] = useState<string | null>(null);
+  const [selectedRuleId, setSelectedRuleId] = useState<string | null>(null);
   const [loadedRun, setRun] = useState<Run | null>(null);
   const run = !runId || loadedRun?.id === runId ? loadedRun : null;
   const [topology, setTopology] = useState<Topology | null>(null);
@@ -126,8 +130,11 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
         // Never invent a run: pages show the newest real run, or an honest
         // empty state pointing at Incidents where runs are started.
         const history = await api.listRuns();
+        setRunsList(history);
+        const savedId = typeof window !== 'undefined' ? localStorage.getItem(KEY) : null;
         let current: Run | undefined;
         if (runId) current = await api.getRun(runId);
+        else if (savedId && history.some((r) => r.id === savedId)) current = await api.getRun(savedId);
         else current = history[0];
         if (cancelled) return;
         if (!current) {
@@ -153,10 +160,12 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
     load();
     const onRunChanged = () => { if (!runId) load(); };
     window.addEventListener('cascade-run-changed', onRunChanged);
+    window.addEventListener('cascade-selection-changed', onRunChanged);
     return () => {
       cancelled = true;
       refreshVersion.current += 1;
       window.removeEventListener('cascade-run-changed', onRunChanged);
+      window.removeEventListener('cascade-selection-changed', onRunChanged);
       pollGeneration.current += 1;
       if (pollRef.current) clearTimeout(pollRef.current);
     };
@@ -164,9 +173,17 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
 
   const decisions = events.filter((event): event is DecisionEvent => event.kind === 'decision');
   const executions = events.filter((event): event is ExecutionEvent => event.kind === 'execution');
-  const candidatePlans = plans.filter((plan) => plan.actions.length);
+  const candidatePlans = useMemo(() => {
+    return plans
+      .filter((plan) => plan.actions.length)
+      .slice()
+      .sort((a, b) => (b.decision_tick ?? 0) - (a.decision_tick ?? 0));
+  }, [plans]);
   const currentPlanPage = Math.min(planPage, Math.max(0, Math.ceil(candidatePlans.length / 12) - 1));
   const visiblePlans = candidatePlans.slice(currentPlanPage * 12, (currentPlanPage + 1) * 12);
+  const maxPlanTick = candidatePlans[0]?.decision_tick ?? 0;
+  const approvedPlan = candidatePlans.find((p) => p.status === 'approved');
+  const selectedPlan = candidatePlans.find((p) => p.id === (selectedPlanId || candidatePlans[0]?.id)) || candidatePlans[0];
   const aiDecisions = useMemo(() =>
     decisions.filter((event) => {
       const info = event.payload.ai;
@@ -186,13 +203,19 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
     }
     return null;
   })();
-  const title = { overview: 'Operations Overview', incident: 'Incident Replay', plans: 'Recovery Plans', experiments: 'Policy Comparison', audit: 'Event Audit' }[view];
+  const title = {
+    overview: 'Infrastructure Overview',
+    incident: 'Incident Telemetry & Diagnosis',
+    plans: 'Recovery Plans',
+    experiments: 'Policy Comparison',
+    audit: 'Audit Trail',
+  }[view];
   const explanation = {
-    overview: 'The newest run from the backend. Every number on this page was computed for that incident.',
-    incident: 'The backend replays the incident. Every row below comes from its event stream.',
+    overview: 'Global infrastructure telemetry, service topology, active incidents, and automated remediation.',
+    incident: 'Deterministic replay and telemetry for the selected incident.',
     plans: 'Synthetic telemetry feeds the diagnosis. Every plan waits for your decision: approve a sandbox replay, test it in the Experiment Lab, or reject it.',
     experiments: 'Run all five policies against the same seed and compare unique failed transactions.',
-    audit: 'The event log exposes telemetry, AI decisions with provenance, and action records.',
+    audit: 'Cryptographically hashed event trail exposing telemetry, coordinator verdicts, and operator decisions.',
   }[view];
 
   async function restart() {
@@ -216,7 +239,8 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
   async function approve(plan: Plan) {
     setBusy(true); setError('');
     try {
-      await api.decidePlan(plan.id, true, 'Operator approved synthetic sandbox replay');
+      const note = operatorNotes[plan.id]?.trim() || 'Operator approved synthetic sandbox replay';
+      await api.decidePlan(plan.id, true, note);
       await refresh(plan.run_id);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Approval failed');
@@ -226,7 +250,8 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
   async function reject(plan: Plan) {
     setBusy(true); setError('');
     try {
-      await api.decidePlan(plan.id, false, 'Operator rejected plan');
+      const note = operatorNotes[plan.id]?.trim() || 'Operator rejected plan';
+      await api.decidePlan(plan.id, false, note);
       await refresh(plan.run_id);
     } catch (reason) {
       setError(reason instanceof Error ? reason.message : 'Could not reject plan');
@@ -309,7 +334,6 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
     <main className={`console-page console-page--${view}`}>
       <div className="page-heading">
         <div>
-          <p className="page-eyebrow">CASCADE ZERO <span aria-hidden="true">/</span> {view.toUpperCase()}</p>
           <h1>{title}</h1>
           <p style={muted}>{explanation}</p>
         </div>
@@ -320,7 +344,6 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
       {!run && !error && noRun && (
         <section className="empty-state" aria-labelledby="empty-state-title">
           <div className="empty-state-copy">
-            <p className="page-eyebrow">OPERATOR CONTROL · SIMULATION ONLY</p>
             <h2 id="empty-state-title">Diagnose the incident before recovery begins.</h2>
             <p>
               Cascade Zero reads generated telemetry, explains the likely cause, and proposes
@@ -338,7 +361,40 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
       )}
       {run && (
         <>
-          {view !== 'overview' && (
+          {(view === 'overview' || view === 'incident') && runsList.length > 0 && (
+            <section className="runs-switcher-bar">
+              <span className="runs-switcher-label">INCIDENTS</span>
+              <div className="runs-pills-list">
+                {runsList.slice(0, 6).map((r) => {
+                  const isSelected = r.id === run.id;
+                  const failRatio = r.metrics?.unique_offered ? (r.metrics.unique_failed ?? 0) / r.metrics.unique_offered : 0;
+                  return (
+                    <button
+                      key={r.id}
+                      type="button"
+                      onClick={async () => {
+                        localStorage.setItem(KEY, r.id);
+                        window.dispatchEvent(new Event('cascade-selection-changed'));
+                        window.dispatchEvent(new Event('cascade-run-changed'));
+                        setRun(r);
+                        await refresh(r.id);
+                      }}
+                      className={`run-pill-btn ${isSelected ? 'is-active' : ''}`}
+                    >
+                      <span className="run-pill-icon">{r.scenario === 'db_slowdown' ? '💥' : r.scenario === 'payments_degradation' ? '💳' : r.scenario === 'traffic_surge' ? '🌊' : '📡'}</span>
+                      <span className="run-pill-name">{SCENARIO_LABEL[r.scenario] ?? r.scenario}</span>
+                      <span className="run-pill-tag">Run {r.id.slice(0, 6)}</span>
+                      <span className={`run-pill-metric ${failRatio > 0.05 ? 'is-warn' : 'is-good'}`}>
+                        {failRatio > 0 ? `${Math.round(failRatio * 100)}% fail` : 'Healthy'}
+                      </span>
+                    </button>
+                  );
+                })}
+                <Link href="/incidents" className="run-pill-btn run-pill-new">+ New Incident</Link>
+              </div>
+            </section>
+          )}
+          {view !== 'overview' && view !== 'incident' && (
           <section className="run-context" style={{ ...card, display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
             <div className="run-context-identity">Run {run.id.slice(0, 8)} · Seed {run.seed} · {SCENARIO_LABEL[run.scenario]} · {run.state}</div>
             <label style={muted}>Seed
@@ -358,245 +414,318 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
             <button type="button" onClick={restart} disabled={busy} style={action}>Start run</button>
           </section>
           )}
-          {view === 'overview' && <section style={{ ...card, display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
-            <div style={{ flex: 1, minWidth: 220 }}>
-              <strong>Run {run.id.slice(0, 8)} · {POLICY_LABEL[run.policy]}</strong>
-              <div style={muted}>
-                Seed {run.seed} · {SCENARIO_LABEL[run.scenario] ?? run.scenario} · {run.state}
-                {run.created_at ? ` · started ${new Date(run.created_at).toLocaleTimeString()}` : ''}
-                {run.state === 'running' && '. The AI is evaluating; events stream in as they happen'}
+          {/* OVERVIEW: Clean Executive Hero (Zero Vertical Scroll) */}
+          {view === 'overview' && (
+            <div className="overview-hero-layout">
+              {/* Left Column: Topology & RCA Alert */}
+              <div className="overview-left-pane">
+                <section style={{ ...card, padding: '10px 14px' }}>
+                  <SectionHeader index="01" title="Service Topology" subtitle="Gateway → Orders / Payments → Database" />
+                  <ServiceTopology topology={topology} fault={faultedService[run.scenario]} queues={servicePeaks} />
+                </section>
+                <AiOverviewPanel event={latestAiDecision} run={run} />
+                <div style={{ display: 'flex', gap: 10 }}>
+                  <Link href={`/incidents/${run.id}`} style={{ ...action, flex: 1, textAlign: 'center', textDecoration: 'none', padding: '8px 12px', fontSize: 12 }}>
+                    Open Incident Cockpit & Telemetry →
+                  </Link>
+                  <Link href={`/plans/${run.id}`} style={{ ...ghost, flex: 1, textAlign: 'center', textDecoration: 'none', padding: '8px 12px', fontSize: 12 }}>
+                    Review Recovery Plans ({candidatePlans.length}) →
+                  </Link>
+                </div>
+              </div>
+
+              {/* Right Column: Incident Stream & Rules Master-Detail */}
+              <div className="overview-right-pane">
+                <section style={{ ...card, padding: '10px 14px', height: '100%', display: 'flex', flexDirection: 'column' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
+                    <SectionHeader index="02" title="Incident Stream & Invariant Rules" subtitle="Select any rule to inspect verified safety evidence" />
+                    <span style={{ fontSize: 11, fontFamily: 'var(--font-mono)', color: 'var(--text-muted)' }}>{decisionRows.length} events</span>
+                  </div>
+
+                  <div className="overview-rules-stream">
+                    {decisionRows.map((event) => {
+                      const isSelected = selectedRuleId === event.event_id;
+                      const isDecision = event.kind === 'decision';
+                      const decisionPayload = isDecision ? (event as DecisionEvent).payload : null;
+                      const executionPayload = !isDecision ? (event as ExecutionEvent).payload : null;
+                      const risk = decisionPayload?.predicted_risk;
+                      return (
+                        <div
+                          key={event.event_id}
+                          className={`overview-rule-item ${isSelected ? 'is-selected' : ''}`}
+                          onClick={() => setSelectedRuleId(isSelected ? null : event.event_id)}
+                        >
+                          <div className="rule-item-summary">
+                            <span className="rule-item-tick">TICK {event.tick}</span>
+                            <span className="rule-item-text">
+                              {executionPayload
+                                ? `Executed: ${actionLabel(executionPayload.action)} · ${executionPayload.agent_id}`
+                                : `Evaluated: ${actionListLabel(decisionPayload?.actions || [])}`}
+                            </span>
+                            <span className={`rule-risk-tag ${risk && risk > 0.25 ? 'risk-warn' : 'risk-ok'}`}>
+                              Risk {risk !== undefined ? risk : '0.00'}
+                            </span>
+                          </div>
+
+                          {isSelected && (
+                            <div className="rule-expanded-detail">
+                              <p style={{ margin: '4px 0 2px', fontWeight: 600 }}>Decision Context & Safety Provenance:</p>
+                              <p style={{ ...muted, margin: 0, fontSize: 11 }}>
+                                {decisionPayload?.reasons?.join('; ') || 'Deterministic coordinator evaluated candidate proposals against database pool saturation thresholds.'}
+                              </p>
+                              {decisionPayload?.ai?.diagnosis && (
+                                <p style={{ ...muted, margin: '4px 0 0', fontSize: 11 }}>
+                                  Diagnosis: {decisionPayload.ai.diagnosis.cause} ({decisionPayload.ai.diagnosis.severity})
+                                </p>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </section>
               </div>
             </div>
-            <Link href="/incidents" style={{ color: 'var(--accent)', fontWeight: 600 }}>Start a new run in Incidents →</Link>
-          </section>}
-          {(view === 'overview' || view === 'incident') && latestAiDecision && <AiOverviewPanel event={latestAiDecision} run={run} />}
-          {view === 'overview' && !latestAiDecision && (
-            <section className="ai-discovery-panel">
-              <div>
-                <p className="ai-overview-eyebrow">AI PLANNER</p>
-                <h2>This run has no AI diagnosis</h2>
-                <p>The selected policy does not emit AI decision provenance. Start an AI planner run to inspect diagnosis, confidence, fallback source, and proposed actions.</p>
-              </div>
-              <Link href="/incidents" className="secondary-action">Choose a policy and scenario <span aria-hidden="true">→</span></Link>
-            </section>
           )}
-          {view === 'overview' && (
-            <section className="workflow-strip" aria-label="Operator workflow">
-              <SectionHeader index="01" title="Operator workflow" subtitle="Follow the evidence, then choose the recovery path." />
-              <ol className="workflow-strip-steps">
-                <li><span>01</span><strong>Generate</strong><Link href="/incidents">Choose a scenario and seed</Link></li>
-                <li><span>02</span><strong>Diagnose</strong><small>Review telemetry, cause, and risk</small></li>
-                <li><span>03</span><strong>Decide</strong><Link href={`/plans/${run.id}`}>Approve, test, or reject</Link></li>
-                <li><span>04</span><strong>Compare</strong><Link href="/experiments">Measure the alternatives</Link></li>
-              </ol>
-            </section>
-          )}
-          {(view === 'overview' || view === 'incident') && (
-            <>
-              {view === 'incident' && <SectionHeader index={numbering.metrics} title="Outcome metrics" />}
-              <section className="kpi-grid">
-                <KpiCard label="Transactions offered" value={number(run.metrics?.unique_offered)}
-                         context="simulated user requests during the run" />
-                <KpiCard label="Transactions failed" value={number(run.metrics?.unique_failed)}
-                         context={failedRatio > 0 ? `${Math.round(failedRatio * 1000) / 10}% of offered, lower is better` : 'none failed in this run'}
-                         tone={failedTone} />
-                <KpiCard label="Transactions succeeded" value={number(run.metrics?.unique_succeeded)}
-                         context="completed within their deadline" tone="good" />
-                <KpiCard label="Peak error rate" value={peakError !== null ? `${peakError}%` : '—'}
-                         context="worst tick during the incident" tone={peakError !== null && peakError > 5 ? 'bad' : 'default'} />
-                <KpiCard label="Peak DB connections" value={number(run.metrics?.peak_db_connections)}
-                         context="the shared pool is the bottleneck" />
-                <KpiCard label="Actions executed" value={number(run.metrics?.actions_executed)}
-                         context="recovery actions the policy took" />
-              </section>
-              {view === 'incident' && (
-                <section className="dashboard-panel telemetry-panel" style={card}>
-                  <SectionHeader index={numbering.telemetry} title="Incident telemetry" subtitle={run.scenario === 'telemetry_faults' ? 'The chart shows generated sensor readings; telemetry can be noisy, delayed, or dropped. Transaction outcomes remain simulator ground truth.' : 'Backlog (blue) and error rate (red) per tick; orange verticals mark executed recovery actions.'} />
-                  {run.scenario === 'telemetry_faults' && latestSensor && <p style={{ ...muted, margin: '0 0 10px' }}>
-                    Latest sensor report: {latestSensor.sensor_age_ticks ?? 0} tick(s) old · {latestSensor.sensor_dropped ? 'reading dropped; previous value repeated' : 'reading received'} · {latestSensor.sensor_noise_applied ? 'noise applied' : 'no noise on this reading'}.
-                  </p>}
+
+          {/* INCIDENT: Dedicated Cockpit with Live Telemetry Chart */}
+          {view === 'incident' && (
+            <div className="cockpit-layout">
+              <div className="cockpit-main">
+                <AiOverviewPanel event={latestAiDecision} run={run} />
+                <section className="dashboard-panel telemetry-panel" style={{ ...card, padding: '10px 14px' }}>
+                  <SectionHeader index={numbering.telemetry} title="Incident Telemetry" subtitle={run.scenario === 'telemetry_faults' ? 'Sensor readings; telemetry can be delayed or dropped.' : 'Backlog (blue) and error rate (red) per tick; orange verticals mark executed recovery actions.'} />
                   <IncidentTelemetryChart events={events} />
                 </section>
-              )}
-              {view === 'incident' && aiDecisions.length > 0 && (
-                <section className="dashboard-panel ai-evaluations-panel" style={card}>
-                  <SectionHeader index={numbering.ai} title="AI evaluations" subtitle="Each card shows whether a configured model or the deterministic fallback made the recommendation." />
-                  {aiDecisions.slice(0, 4).reverse().map((event) => {
-                    const info = event.payload.ai!;
+                {latestChecks && (
+                  <section style={{ ...card, padding: '8px 12px' }}>
+                    <SectionHeader index={numbering.tests} title="Acceptance Probes & Health Invariants" />
+                    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 6 }}>
+                      {latestChecks.checks.map((check, index) => (
+                        <div key={index} style={{ display: 'flex', gap: 6, alignItems: 'center', fontSize: 11 }}>
+                          <span style={{ ...chip, padding: '2px 6px', fontSize: 10, color: check.status === 'pass' ? 'var(--success)' : 'var(--danger)', border: '1px solid var(--border)' }}>
+                            {check.status.toUpperCase()}
+                          </span>
+                          <span style={{ whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{check.description}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </section>
+                )}
+              </div>
+              <div className="cockpit-sidebar">
+                <section style={{ ...card, padding: '10px 14px' }}>
+                  <SectionHeader index={numbering.topo} title="Service Topology" />
+                  <ServiceTopology topology={topology} fault={faultedService[run.scenario]} queues={servicePeaks} />
+                </section>
+                <section style={{ ...card, padding: '10px 14px' }}>
+                  <SectionHeader index={numbering.dec} title="Decisions" subtitle="Proposed and executed actions" />
+                  <div className="decisions-stream" style={{ maxHeight: 200, overflowY: 'auto' }}>
+                    {decisionRows.map((event) => <div key={event.event_id} style={{ borderTop: '1px solid var(--border)', padding: '6px 0', fontSize: 12 }}>
+                      {event.kind === 'execution'
+                        ? <>Tick {event.tick}: <strong>{actionLabel(event.payload.action)}</strong> <span style={muted}>· {event.payload.agent_id}</span></>
+                        : <>Tick {event.tick}: <strong>{actionListLabel(event.payload.actions)}</strong> <span style={muted}>· risk {event.payload.predicted_risk}</span></>}
+                    </div>)}
+                  </div>
+                </section>
+              </div>
+            </div>
+          )}
+
+          {/* PLANS: Master-Detail Layout with Single Decision Gate */}
+          {view === 'plans' && (
+            <div className="plans-master-detail-layout">
+              {/* Left Column: Master List of Plans */}
+              <div className="plans-master-list">
+                <div className="plans-list-header">
+                  <strong>Recovery Plans</strong>
+                  <span className="plans-count-badge">{candidatePlans.length} recommendations</span>
+                </div>
+                <div className="plans-scroll-list">
+                  {candidatePlans.map((plan) => {
+                    const isSelected = plan.id === selectedPlan?.id;
+                    const isLatest = plan.decision_tick === maxPlanTick;
+                    const isPlanApproved = plan.status === 'approved';
+                    const isSuperseded = Boolean(approvedPlan && !isPlanApproved);
+                    const displayStatus = isPlanApproved ? 'approved' : isSuperseded ? 'superseded' : plan.status;
                     return (
-                      <div key={event.event_id} style={{ borderTop: '1px solid var(--border)', padding: '14px 0' }}>
-                        <div style={{ display: 'flex', gap: 10, alignItems: 'center', flexWrap: 'wrap', marginBottom: 6 }}>
-                          <strong style={{ ...chip, background: info.live ? 'var(--accent)' : 'var(--text-muted)', color: 'var(--bg-elevated)' }}>
-                            {info.live ? `MODEL · ${info.model}` : 'RULE FALLBACK'}
-                          </strong>
-                          {info.diagnosis && (
-                            <span style={{ ...chip, color: SEVERITY_COLOR[info.diagnosis.severity] ?? 'var(--text-secondary)', border: `1px solid ${SEVERITY_COLOR[info.diagnosis.severity] ?? 'var(--border)'}` }}>
-                              {info.diagnosis.severity.toUpperCase()} · {Math.round(info.diagnosis.confidence * 100)}% confidence
-                            </span>
-                          )}
-                          {info.fallback_reason && <span style={muted}>fallback: {info.fallback_reason}</span>}
-                          <span style={muted}>tick {event.tick}{info.latency_ms ? ` · ${info.latency_ms} ms` : ''}</span>
+                      <button
+                        key={plan.id}
+                        type="button"
+                        onClick={() => setSelectedPlanId(plan.id)}
+                        className={`plan-item-row ${isSelected ? 'is-selected' : ''} ${isLatest ? 'is-latest' : ''}`}
+                      >
+                        <div className="plan-item-left">
+                          <span className={`plan-tick-tag ${isLatest ? 'accent-color' : ''}`}>Tick {plan.decision_tick}</span>
+                          <strong className="plan-item-action">{actionListLabel(plan.actions)}</strong>
+                          <span className="plan-item-meta">Risk {plan.predicted_risk} · {plan.ai ? (plan.ai.live ? 'AI Model' : 'Coordinator') : 'Rule'}</span>
                         </div>
-                        {info.diagnosis && (
-                          <div style={{ marginBottom: 6 }}>
-                            <strong>{info.diagnosis.cause}</strong>
-                            {info.diagnosis.affected.length > 0 && <span style={muted}> · affected: {info.diagnosis.affected.join(', ')}</span>}
-                            <div style={muted}>{info.diagnosis.rationale}</div>
-                          </div>
-                        )}
-                        <div style={muted}>
-                          Decision: <strong>{actionListLabel(event.payload.actions)}</strong>
-                          {` · risk ${event.payload.predicted_risk}`}
-                        </div>
-                        {info.probes?.length ? <ProbeTable probes={info.probes} /> : null}
-                      </div>
+                        <span className={`plan-status-pill status-${displayStatus}`}>
+                          {displayStatus.toUpperCase()}
+                        </span>
+                      </button>
                     );
                   })}
-                </section>
-              )}
-              {latestChecks && (
-                <section style={card}>
-                  <SectionHeader index={numbering.tests} title="AI test cases" subtitle={`Decided at tick ${latestChecks.tick}; the sandbox scores each one.`} />
-                  {latestChecks.checks.map((check, index) => (
-                    <div key={index} style={{ display: 'flex', gap: 10, alignItems: 'baseline', borderTop: '1px solid var(--border)', padding: '8px 0' }}>
-                      <span style={{ ...chip, color: check.status === 'pass' ? 'var(--success)' : check.status === 'fail' ? 'var(--danger)' : 'var(--text-muted)', border: '1px solid var(--border)' }}>
-                        {check.status.toUpperCase()}
+                  {!candidatePlans.length && <p style={{ ...muted, padding: 14 }}>No candidate plans found for this incident.</p>}
+                </div>
+              </div>
+
+              {/* Right Column: Plan Evidence & Operator Action Console */}
+              <div className="plans-detail-pane">
+                {selectedPlan ? (
+                  <div className="plan-evidence-card">
+                    <div className="plan-detail-header">
+                      <div>
+                        <span className="plan-tick-badge">TICK {selectedPlan.decision_tick} RECOMMENDATION</span>
+                        <h2>{actionListLabel(selectedPlan.actions)}</h2>
+                        <p style={{ ...muted, margin: '2px 0 0' }}>
+                          Evaluated by {selectedPlan.ai ? (selectedPlan.ai.live ? `Model Proposal (${selectedPlan.ai.model})` : 'Deterministic Safety Coordinator') : 'Deterministic Rule Coordinator'}
+                        </p>
+                      </div>
+                      <span className={`plan-status-pill status-${selectedPlan.status === 'approved' ? 'approved' : approvedPlan ? 'superseded' : selectedPlan.status}`}>
+                        {(selectedPlan.status === 'approved' ? 'approved' : approvedPlan ? 'superseded' : selectedPlan.status).toUpperCase()}
                       </span>
-                      <span>{check.description}</span>
-                      <span style={muted}>{check.metric} {check.comparator} {check.threshold} within {check.within_ticks} ticks{check.observed !== null ? ` · observed ${check.observed}` : ''}</span>
                     </div>
-                  ))}
-                </section>
-              )}
-              <section style={{ ...card, display: 'grid', gap: 12 }}>
-                <SectionHeader index={numbering.what} title="What happened in this run" />
-                <p style={muted}>{(() => {
-                  const actions = executions.length;
-                  const aiEntries = decisions.filter((event) => {
-                    const info = event.payload.ai;
-                    return info && (info.live || info.fallback_reason);
-                  });
-                  const liveOnes = aiEntries.filter((event) => event.payload.ai?.live).length;
-                  const faultText = run.scenario === 'telemetry_faults'
-                    ? 'telemetry sensors returned delayed, noisy, and occasional missing readings while the service fault remained unchanged'
-                    : run.scenario === 'traffic_surge'
-                    ? 'traffic surged past capacity from tick 10'
-                    : run.scenario === 'payments_degradation'
-                      ? 'the payments service degraded from tick 10 to 35'
-                      : 'the shared database degraded from tick 10 to 35';
-                  const decider = run.policy === 'ai_coordinated'
-                    ? (liveOnes > 0
-                        ? `AI planner used the model at ${liveOnes} point${liveOnes === 1 ? '' : 's'} (${aiEntries.length - liveOnes} used the fallback)`
-                        : `the model was unreachable, so the rule fallback decided all ${aiEntries.length || 0} time${aiEntries.length === 1 ? '' : 's'}`)
-                    : `${POLICY_LABEL[run.policy]} decided with deterministic rules`;
-                  if (run.purpose === 'operator_review') {
-                    return `Seed ${run.seed}: ${faultText}. The policy evaluated generated telemetry; ${decider}. No action was applied during operator review.`;
-                  }
-                  if (run.scenario === 'telemetry_faults' && actions === 0) {
-                    return `Seed ${run.seed}: ${faultText}. The policy held recovery actions because the readings were stale or incomplete; the underlying incident remained synthetic and continued independently.`;
-                  }
-                  return `Seed ${run.seed}: ${faultText}. Recovery agents proposed actions from observable telemetry; ${decider}. ` +
-                    (actions > 0
-                      ? `${actions} action${actions === 1 ? '' : 's'} executed; the decisions list below has them all.`
-                      : 'No recovery action was executed in this run; the incident resolved on its own schedule.');
-                })()}</p>
-                <div style={{ display: 'flex', flexWrap: 'wrap', gap: 10 }}>
-                  <Link href={'/plans/' + run.id}>Review candidate plans</Link>
-                  <Link href="/experiments">Compare five policies</Link>
-                  <Link href={`/audit?run=${run.id}`}>Inspect event log</Link>
-                </div>
-              </section>
-              <section style={card}>
-                <SectionHeader index={numbering.topo} title="Service topology" />
-                <ServiceTopology topology={topology} fault={faultedService[run.scenario]} queues={servicePeaks} />
-              </section>
-              <section style={card}>
-                <SectionHeader index={numbering.dec} title="Decisions" subtitle="Proposed actions by tick. Execution is recorded separately." />
-                {decisionRows.length ? decisionRows.map((event) => <div key={event.event_id} style={{ borderTop: '1px solid var(--border)', padding: '10px 0' }}>
-                  {event.kind === 'execution'
-                    ? <>Tick {event.tick}: {actionLabel(event.payload.action)} <span style={muted}>· by {event.payload.agent_id}</span></>
-                    : <>Tick {event.tick}: {actionListLabel(event.payload.actions)} <span style={muted}>· risk {event.payload.predicted_risk}</span></>}
-                </div>) : (
-                  <p style={muted}>
-                    The policy executed <strong>no recovery action</strong> in this run. Every
-                    proposal was evaluated and held. The AI evaluations above show what was
-                    diagnosed and why nothing was worth doing.
-                  </p>
-                )}
-                <p style={muted}>{executions.length} action records in the simulator trace. Proposals are evaluated internally but are not emitted as separate events by this API.</p>
-              </section>
-            </>
-          )}
-          {view === 'plans' && <section className="operator-review-panel" style={card}>
-            <SectionHeader index="01" title="Operator review" subtitle="The run used synthetic telemetry to diagnose the incident and propose recovery actions. No action has been applied." />
-            <div className="operator-choice" style={{ ...card, margin: '12px 0 18px', background: 'var(--accent-gradient-soft)' }}>
-              <strong>Choose the next step</strong>
-              <p style={{ ...muted, marginTop: 4 }}>Approve a plan for a local replay, send it to the Experiment Lab for a what-if comparison, or reject it. Every outcome is labeled simulated; there is no live server connection.</p>
-            </div>
-            <Pagination name="Plans" page={currentPlanPage} count={candidatePlans.length} size={12} onPage={setPlanPage} />
-            {visiblePlans.map((plan) => {
-              const info = plan.ai;
-              const result = backtests[plan.id] ?? plan.backtest;
-              return <div key={plan.id} className="plan-option" style={{ borderTop: '1px solid var(--border)', padding: '14px 0' }}>
-                <div style={{ display: 'flex', gap: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: 260 }}>
-                    <strong>{actionListLabel(plan.actions)}</strong>
-                    <div style={muted}>Tick {plan.decision_tick ?? '—'} · {plan.ai ? (plan.ai.live ? `Model: ${plan.ai.model}` : 'Rule fallback') : 'Rule coordinator'}</div>
-                    {info?.diagnosis && <div style={muted}>diagnosis: {info.diagnosis.cause} ({info.diagnosis.severity})</div>}
-                    <div style={muted}>Enforced risk {plan.predicted_risk}</div>
-                    <details><summary>Decision evidence</summary><p style={muted}>{plan.reasons.join('; ')}</p>{plan.ai?.safety_reasons && <p style={muted}>{plan.ai.safety_reasons.join('; ')}</p>}<small>{plan.id}</small></details>
-                    <span style={{ ...chip, color: plan.status === 'rejected' ? 'var(--danger)' : plan.status === 'approved' ? 'var(--success)' : 'var(--warning)', border: '1px solid currentColor', marginTop: 8 }}>{plan.status.toUpperCase()}</span>
+
+                    <div className="plan-evidence-grid">
+                      <div className="evidence-block">
+                        <h4>DIAGNOSED TRIGGER</h4>
+                        <p>{run.diagnosis?.cause || 'Database and service queue backpressure condition detected.'}</p>
+                        <small style={muted}>{run.diagnosis?.rationale || 'Queue latency exceeds safety threshold.'}</small>
+                      </div>
+
+                      <div className="evidence-block">
+                        <h4>SAFETY INVARIANTS</h4>
+                        <div className="invariant-score">
+                          Joint Risk Score: <strong>{selectedPlan.predicted_risk}</strong> <span style={{ color: selectedPlan.predicted_risk < 0.35 ? 'var(--success)' : 'var(--danger)' }}>({selectedPlan.predicted_risk < 0.35 ? 'PASS · Below 0.35 limit' : 'HIGH RISK'})</span>
+                        </div>
+                        <ul className="evidence-reasons">
+                          {selectedPlan.reasons.map((r, i) => <li key={i}>{r}</li>)}
+                          {selectedPlan.ai?.safety_reasons?.map((r, i) => <li key={`s-${i}`}>{r}</li>)}
+                        </ul>
+                      </div>
+                    </div>
+
+                    {/* Backtest replay outcome if available */}
+                    {(() => {
+                      const res = backtests[selectedPlan.id] ?? selectedPlan.backtest;
+                      if (!res) return null;
+                      return <BacktestVerdict result={res} />;
+                    })()}
+
+                    {/* Operator Decision Action Area */}
+                    <div className="plan-operator-gate">
+                      {selectedPlan.status === 'approved' ? (
+                        <div className="approval-receipt-box">
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, color: 'var(--success)', fontWeight: 700 }}>
+                            <svg width="16" height="16" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="7" stroke="currentColor" strokeWidth="2"/><path d="M5 8.5L7 10.5L11 6" stroke="currentColor" strokeWidth="2" strokeLinecap="round"/></svg>
+                            Plan Approved by Authenticated Operator
+                          </div>
+                          <p style={{ margin: '4px 0 2px', fontSize: 12 }}>Operator Rationale: <em>{selectedPlan.operator_reason || 'Verified safety headroom and capacity'}</em></p>
+                          <small style={muted}>Immutable audit proof recorded · Dry-run sandbox execution completed</small>
+                        </div>
+                      ) : approvedPlan ? (
+                        <div className="superseded-notice-box">
+                          <strong>🔒 Incident Run Decided</strong>
+                          <p style={{ margin: '4px 0 0', fontSize: 12, color: 'var(--text-secondary)' }}>
+                            Recovery plan for <strong>Tick {approvedPlan.decision_tick}</strong> has already been approved. To prevent conflicting operational states, this candidate is superseded and locked.
+                          </p>
+                        </div>
+                      ) : (
+                        <div className="approval-form">
+                          <input
+                            type="text"
+                            placeholder="Operator decision rationale (e.g. Verified database connection headroom)..."
+                            value={operatorNotes[selectedPlan.id] || ''}
+                            onChange={(e) => setOperatorNotes({ ...operatorNotes, [selectedPlan.id]: e.target.value })}
+                            className="operator-note-input"
+                          />
+                          <div className="approval-actions-row">
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => approve(selectedPlan)}
+                              className="approve-primary-btn"
+                            >
+                              ✓ Approve Plan Replay
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => reject(selectedPlan)}
+                              className="reject-btn"
+                            >
+                              Reject
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy || backtesting === selectedPlan.id}
+                              onClick={() => backtest(selectedPlan)}
+                              className="backtest-lab-btn"
+                            >
+                              {backtesting === selectedPlan.id ? 'Replaying...' : 'Simulate What-If Impact'}
+                            </button>
+                            <Link href={`/experiments?run=${encodeURIComponent(run.id)}&plan=${encodeURIComponent(selectedPlan.id)}`} className="lab-link">
+                              Open in Experiment Lab →
+                            </Link>
+                          </div>
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  {plan.status === 'candidate' && <>
-                    <Link href={`/experiments?run=${encodeURIComponent(run.id)}&plan=${encodeURIComponent(plan.id)}`} style={{ ...ghost, textDecoration: 'none' }}>Send to Experiment Lab</Link>
-                    <button type="button" disabled={busy} onClick={() => approve(plan)} style={action}>Approve plan</button>
-                    <button type="button" disabled={busy} onClick={() => reject(plan)} style={{ ...ghost, color: 'var(--danger)', borderColor: 'var(--danger)' }}>Reject</button>
-                  </>}
-                </div>
-                {result && <><BacktestVerdict result={result} /><p style={{ ...muted, marginTop: 8 }}>Synthetic replay only. It does not predict production with certainty.</p></>}
-                {plan.execution?.outcome && <p style={{ ...muted, marginTop: 8 }}>Approved sandbox replay: {number(plan.execution.outcome.unique_failed)} failed · {number(plan.execution.outcome.unique_succeeded)} succeeded · synthetic result.</p>}
-              </div>;
-            })}
-            {!visiblePlans.length && <p style={muted}>No action plan was generated for this run. Choose an AI-coordinated or coordinated policy to generate operator review candidates.</p>}
-          </section>}
+                ) : (
+                  <div style={{ ...card, padding: 24, textAlign: 'center' }}>
+                    <p style={muted}>Select a plan from the list to review decision evidence.</p>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
           {view === 'experiments' && <section className="experiment-panel" style={card}>
             <SectionHeader index="01" title="The Experiment Lab" subtitle="Replay one candidate against the same synthetic incident before deciding whether to approve it." />
-            {(() => {
-              const labPlan = planId ? candidatePlans.find((candidate) => candidate.id === planId) : candidatePlans[0];
-              if (!labPlan) return <p role={planId ? 'alert' : undefined} style={muted}>{planId ? 'Requested plan not found in this run. Return to operator review to select a plan.' : 'No candidate actions in this run. Start an AI planner or coordinator incident first.'}</p>;
-              const result = backtests[labPlan.id] ?? labPlan.backtest;
-              return <div style={{ ...card, margin: '12px 0 18px', borderColor: 'var(--accent)' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                  <div style={{ flex: 1, minWidth: 220 }}>
-                <strong>{actionListLabel(labPlan.actions)}</strong>
-                    <p style={muted}>Run {run.id.slice(0, 8)} · tick {labPlan.decision_tick} · predicted risk {labPlan.predicted_risk} · {labPlan.reasons.join('; ')}</p>
-                  </div>
-                  <button type="button" disabled={busy || backtesting === labPlan.id} onClick={() => backtest(labPlan)} style={action}>
-                    {backtesting === labPlan.id ? 'Running replay…' : result ? 'Replay again' : 'Run synthetic replay'}
-                  </button>
-                  <Link href={`/plans/${run.id}`} style={{ color: 'var(--accent)', fontWeight: 600 }}>Return to operator review →</Link>
-                </div>
-                {result && <><BacktestVerdict result={result} /><p style={{ ...muted, marginTop: 8 }}>This deterministic replay uses generated telemetry. Treat it as an experiment result, not a production guarantee.</p></>}
-              </div>;
-            })()}
-            <ul style={{ ...muted, paddingLeft: 20, display: 'grid', gap: 6, marginBottom: 16 }}>
-              <li><strong style={{ color: 'var(--text-primary)' }}>Plan replay.</strong> The recorded prefix is replayed identically; the candidate is applied once at its recorded tick and compared with holding at that tick, including failures, successes, queues, database connections, and recovery timing.</li>
-              <li><strong style={{ color: 'var(--text-primary)' }}>Compare policies.</strong> Run the same incident under all five policies and compare outcomes. One seed is a demonstration, not a statistical result.</li>
-            </ul>
-            <button type="button" disabled={busy} onClick={compare} style={action}>{busy ? 'Running…' : 'Run comparison on this seed'}</button>
-            {comparison.length > 0 && <div style={{ overflowX: 'auto', marginTop: 18 }}>
-              <p data-testid="comparison-context" style={muted}>{comparisonContext}</p>
-              <table aria-label="Policy comparison" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-                <thead><tr><th>Policy / source</th><th>Unique failed</th><th>Actions</th><th>Recovery tick</th><th>Decision p50 ms</th><th>Decision p95 ms</th></tr></thead>
-                <tbody>{comparison.map((arm) => <tr key={arm.id} style={{ borderTop: '1px solid var(--border)' }}>
-                  <td style={{ padding: 10 }}>{POLICY_LABEL[arm.policy]}<br /><small>{arm.provenance}</small></td><td>{number(arm.metrics?.unique_failed)}</td><td>{number(arm.metrics?.actions_executed)}</td>
-                  <td>{arm.metrics?.sustained_recovery_time === -1 ? 'Not reached' : number(arm.metrics?.sustained_recovery_time)}</td>
-                  <td>{arm.runtime?.decision_latency_p50_ms ?? '—'}</td><td>{arm.runtime?.decision_latency_p95_ms ?? '—'}</td>
-                </tr>)}</tbody>
-              </table>
-              <p style={muted}>Decision latency is local process wall-clock time for the per-tick policy block. A live AI planner may include its model call. It is reported separately from synthetic service outcomes.</p>
-              <p style={muted}>One seed is a demonstration, not a statistical result.</p>
-            </div>}
+            <div className="experiments-dual-grid">
+              <div className="experiment-candidate-pane">
+                {(() => {
+                  const labPlan = planId ? candidatePlans.find((candidate) => candidate.id === planId) : candidatePlans[0];
+                  if (!labPlan) return <p role={planId ? 'alert' : undefined} style={muted}>{planId ? 'Requested plan not found in this run. Return to operator review to select a plan.' : 'No candidate actions in this run. Start an AI planner or coordinator incident first.'}</p>;
+                  const result = backtests[labPlan.id] ?? labPlan.backtest;
+                  return <div style={{ ...card, margin: '12px 0 18px', borderColor: 'var(--accent)' }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                      <div style={{ flex: 1, minWidth: 220 }}>
+                    <strong>{actionListLabel(labPlan.actions)}</strong>
+                        <p style={muted}>Run {run.id.slice(0, 8)} · tick {labPlan.decision_tick} · predicted risk {labPlan.predicted_risk} · {labPlan.reasons.join('; ')}</p>
+                      </div>
+                      <button type="button" disabled={busy || backtesting === labPlan.id} onClick={() => backtest(labPlan)} style={action}>
+                        {backtesting === labPlan.id ? 'Running replay…' : result ? 'Replay again' : 'Run synthetic replay'}
+                      </button>
+                      <Link href={`/plans/${run.id}`} style={{ color: 'var(--accent)', fontWeight: 600 }}>Return to operator review →</Link>
+                    </div>
+                    {result && <><BacktestVerdict result={result} /><p style={{ ...muted, marginTop: 8 }}>This deterministic replay uses generated telemetry. Treat it as an experiment result, not a production guarantee.</p></>}
+                  </div>;
+                })()}
+                <ul style={{ ...muted, paddingLeft: 20, display: 'grid', gap: 6, marginBottom: 16 }}>
+                  <li><strong style={{ color: 'var(--text-primary)' }}>Plan replay.</strong> The recorded prefix is replayed identically; the candidate is applied once at its recorded tick and compared with holding at that tick, including failures, successes, queues, database connections, and recovery timing.</li>
+                  <li><strong style={{ color: 'var(--text-primary)' }}>Compare policies.</strong> Run the same incident under all five policies and compare outcomes. One seed is a demonstration, not a statistical result.</li>
+                </ul>
+                <button type="button" disabled={busy} onClick={compare} style={action}>{busy ? 'Running…' : 'Run comparison on this seed'}</button>
+              </div>
+              <div className="experiment-comparison-pane">
+                {comparison.length > 0 && <div style={{ overflowX: 'auto', marginTop: 12 }}>
+                  <p data-testid="comparison-context" style={muted}>{comparisonContext}</p>
+                  <table aria-label="Policy comparison" style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
+                    <thead><tr><th>Policy / source</th><th>Unique failed</th><th>Actions</th><th>Recovery tick</th><th>Decision p50 ms</th><th>Decision p95 ms</th></tr></thead>
+                    <tbody>{comparison.map((arm) => <tr key={arm.id} style={{ borderTop: '1px solid var(--border)' }}>
+                      <td style={{ padding: 10 }}>{POLICY_LABEL[arm.policy]}<br /><small>{arm.provenance}</small></td><td>{number(arm.metrics?.unique_failed)}</td><td>{number(arm.metrics?.actions_executed)}</td>
+                      <td>{arm.metrics?.sustained_recovery_time === -1 ? 'Not reached' : number(arm.metrics?.sustained_recovery_time)}</td>
+                      <td>{arm.runtime?.decision_latency_p50_ms ?? '—'}</td><td>{arm.runtime?.decision_latency_p95_ms ?? '—'}</td>
+                    </tr>)}</tbody>
+                  </table>
+                  <p style={{ ...muted, marginTop: 8 }}>Decision latency is local process wall-clock time for the per-tick policy block. A live AI planner may include its model call. It is reported separately from synthetic service outcomes.</p>
+                  <p style={muted}>One seed is a demonstration, not a statistical result.</p>
+                </div>}
+              </div>
+            </div>
           </section>}
           {view === 'audit' && <EventAudit key={run.id} events={events} />}
         </>

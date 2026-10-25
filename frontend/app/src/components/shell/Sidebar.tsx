@@ -138,14 +138,13 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
             style={{
               width: 32,
               height: 32,
-              borderRadius: 10,
-              background: 'var(--accent-gradient)',
-              boxShadow: '0 0 12px 2px rgba(114,47,55,0.18), 0 2px 8px rgba(183,168,154,0.25)',
+              borderRadius: 8,
+              background: 'var(--accent)',
+              boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
               flexShrink: 0,
-              transition: 'box-shadow 0.2s ease',
             }}
           >
             <svg width="17" height="17" viewBox="0 0 16 16" fill="none">
@@ -162,9 +161,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                   fontSize: 14,
                   fontWeight: 800,
                   letterSpacing: '-0.025em',
-                  background: 'linear-gradient(90deg, var(--text-primary) 60%, var(--text-secondary) 100%)',
-                  WebkitBackgroundClip: 'text',
-                  WebkitTextFillColor: 'transparent',
+                  color: 'var(--text-primary)',
                   whiteSpace: 'nowrap',
                 }}
               >

@@ -11,18 +11,18 @@ export function SectionHeader({ index, title, subtitle }: {
   index: string; title: string; subtitle?: string;
 }) {
   return (
-    <div className="section-heading" style={{ marginBottom: 14 }}>
+    <div className="section-heading" style={{ marginBottom: 6 }}>
       <div style={{
-        display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 2,
+        display: 'flex', alignItems: 'baseline', gap: 8, marginBottom: 1,
       }}>
         <span style={{
-          fontFamily: 'var(--font-mono)', fontSize: 12, fontWeight: 700,
-          color: 'var(--accent)', letterSpacing: '0.08em',
+          fontFamily: 'var(--font-mono)', fontSize: 11, fontWeight: 700,
+          color: 'var(--accent)', letterSpacing: '0.06em',
         }}>{index}</span>
-        <h2 style={{ fontSize: 18, margin: 0, color: 'var(--text-primary)' }}>{title}</h2>
+        <h2 style={{ fontSize: 14, fontWeight: 700, margin: 0, color: 'var(--text-primary)' }}>{title}</h2>
       </div>
       {subtitle && (
-        <p style={{ color: 'var(--text-muted)', fontSize: 13, margin: 0 }}>{subtitle}</p>
+        <p style={{ color: 'var(--text-muted)', fontSize: 11, margin: 0 }}>{subtitle}</p>
       )}
     </div>
   );
@@ -39,17 +39,17 @@ export function KpiCard({ label, value, context, tone }: {
     bad: 'var(--danger)',
   }[tone ?? 'default'];
   return (
-    <div className="surface kpi-card" style={{ padding: '16px 20px', minWidth: 0 }}>
+    <div className="surface kpi-card" title={context} style={{ padding: '8px 12px', minWidth: 0, display: 'flex', flexDirection: 'column', gap: 2 }}>
       <div style={{
-        fontSize: 11, color: 'var(--text-muted)', fontWeight: 600,
-        textTransform: 'uppercase', letterSpacing: '0.07em', marginBottom: 8,
+        fontSize: 10, color: 'var(--text-muted)', fontWeight: 600,
+        textTransform: 'uppercase', letterSpacing: '0.05em', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>{label}</div>
       <div style={{
-        fontSize: 30, fontWeight: 700, color: toneColor,
+        fontSize: 18, fontWeight: 700, color: toneColor,
         fontVariantNumeric: 'tabular-nums', lineHeight: 1.1,
       }}>{value}</div>
       {context && (
-        <div style={{ color: 'var(--text-muted)', fontSize: 12, marginTop: 6 }}>{context}</div>
+        <div style={{ color: 'var(--text-muted)', fontSize: 10, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{context}</div>
       )}
     </div>
   );
