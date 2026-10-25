@@ -13,3 +13,8 @@ docs/
 # Browser verification outputs
 frontend/app/test-results/
 frontend/app/playwright-report/
+
+# Persisted simulator runs: retain canonical demo runs, exclude ephemeral runs
+backend/data/runs/*.json
+!backend/data/runs/demo-*.json
+

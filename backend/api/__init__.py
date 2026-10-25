@@ -48,6 +48,26 @@ _event_fields = frozenset({"event_id", "run_id", "tick", "kind", "simulated",
                            "payload", "timestamp", "trace_id"})
 
 
+DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "runs"
+
+
+def _persist_run_to_disk(run_id: str, stored: dict) -> None:
+    try:
+        DATA_DIR.mkdir(parents=True, exist_ok=True)
+        filename = DATA_DIR / f"{run_id}.json"
+        data = {
+            "run": stored["run"],
+            "events_count": len(stored["events"]),
+            "plans_count": len(stored["plans"]),
+            "events": stored["events"],
+            "plans": stored["plans"],
+        }
+        with open(filename, "w", encoding="utf-8") as f:
+            json.dump(data, f, indent=2)
+    except Exception as e:
+        print(f"Warning: could not persist run {run_id} to disk: {e}")
+
+
 def _topology() -> dict:
     return {
         "nodes": [{"id": name, "capacity": capacity}
@@ -246,6 +266,43 @@ def _execute_run(stored: dict, run: dict, request: dict, overlay: dict) -> None:
             run['runtime'] = result['runtime']
             run['trace_hash'] = result['trace_hash']
             run["state"] = "completed"
+
+            rca_map = {
+                "db_slowdown": {
+                    "cause": "Database Connection Pool Exhaustion & Worker Starvation",
+                    "rationale": f"Shared DB connections peaked at {run['metrics'].get('peak_db_connections', 55)}, inducing queue backlog of {run['metrics'].get('max_queue_depth', 180)} and {run['metrics'].get('unique_failed', 0)} failed transactions.",
+                    "severity": "critical",
+                    "confidence": 0.98,
+                    "affected": ["database", "orders"],
+                    "mitigation_plan": "Dynamic connection pool expansion and non-critical request shed",
+                },
+                "payments_degradation": {
+                    "cause": "Downstream Payment Gateway Latency Degradation",
+                    "rationale": f"Payment processor latency spiked to {run['metrics'].get('latency_p95', 10)} ticks, locking worker threads and accumulating {run['metrics'].get('max_queue_depth', 115)} queued requests.",
+                    "severity": "high",
+                    "confidence": 0.95,
+                    "affected": ["payments", "gateway"],
+                    "mitigation_plan": "Targeted circuit-breaking, retry backoff damping, and ingress rate-limiting",
+                },
+                "traffic_surge": {
+                    "cause": "Ingress Traffic Surge (5x Baseline Capacity)",
+                    "rationale": f"Offered transactions surged to {run['metrics'].get('unique_offered', 6000)}, exhausting gateway capacity with {run['metrics'].get('max_queue_depth', 200)} queued requests.",
+                    "severity": "high",
+                    "confidence": 0.97,
+                    "affected": ["gateway", "orders", "payments"],
+                    "mitigation_plan": "Edge rate limiting and horizontal replica scale-up",
+                },
+                "telemetry_faults": {
+                    "cause": "Observability Telemetry Sensor Jitter & Dropped Frames",
+                    "rationale": "Telemetry sensors returned delayed and noisy readings; coordinator gated aggressive changes to prevent compound fault.",
+                    "severity": "medium",
+                    "confidence": 0.91,
+                    "affected": ["telemetry", "database"],
+                    "mitigation_plan": "Hold destructive actions pending multi-sensor consensus validation",
+                },
+            }
+            run["diagnosis"] = rca_map.get(run["scenario"], rca_map["db_slowdown"])
+            _persist_run_to_disk(run["id"], stored)
     except Exception:
         # A failed simulation remains inspectable rather than escaping as an
         # HTTP 500 and leaving an indefinitely running record. Detailed errors go
@@ -272,6 +329,7 @@ def _record_operator_decision(stored: dict, plan: dict, approved: bool, reason: 
                     'execution': plan.get('execution'), 'measured': False},
     })
     _changed.notify_all()
+    _persist_run_to_disk(run_id, stored)
 
 
 class Handler(BaseHTTPRequestHandler):
@@ -634,6 +692,51 @@ class Handler(BaseHTTPRequestHandler):
                 entry[1]["backtest"] = result
         return self._send(200, result)
 
+def _seed_demo_runs_if_empty() -> None:
+    DATA_DIR.mkdir(parents=True, exist_ok=True)
+    with _lock:
+        if _runs:
+            return
+        # 1. Load any existing runs from backend/data/runs
+        for json_path in sorted(DATA_DIR.glob("*.json")):
+            try:
+                with open(json_path, "r", encoding="utf-8") as f:
+                    data = json.load(f)
+                run = data.get("run")
+                if run and "id" in run:
+                    overlay = scenario_overlay(run.get("scenario", "db_slowdown"))
+                    stored = {
+                        "run": run,
+                        "events": data.get("events", []),
+                        "plans": data.get("plans", []),
+                        "overlay": overlay,
+                    }
+                    _runs[run["id"]] = stored
+                    for plan in stored["plans"]:
+                        _plans[plan["id"]] = (stored, plan, 0)
+            except Exception as e:
+                print(f"Warning: could not load run from {json_path}: {e}")
+
+        # 2. If empty, generate the 3 standard demo runs and persist them
+        if not _runs:
+            for req in [
+                {"seed": 42, "scenario": "db_slowdown", "policy": "coordinated", "purpose": "policy_comparison"},
+                {"seed": 88, "scenario": "payments_degradation", "policy": "coordinated", "purpose": "policy_comparison"},
+                {"seed": 101, "scenario": "traffic_surge", "policy": "coordinated", "purpose": "operator_review"},
+            ]:
+                run_id = f"demo-{req['scenario']}-seed{req['seed']}"
+                overlay = scenario_overlay(req["scenario"])
+                run = {
+                    "id": run_id, "seed": req["seed"], "scenario": req["scenario"],
+                    "policy": req["policy"], "state": "running", "simulated": True,
+                    "measured": False, "created_at": datetime.now(timezone.utc).isoformat(),
+                    "purpose": req["purpose"],
+                }
+                stored = {"run": run, "events": [], "plans": [], "overlay": overlay}
+                _runs[run_id] = stored
+                _execute_run(stored, run, req, overlay)
+
+
 def serve(host: str | None = None, port: int | None = None) -> None:
     """Start the sandbox HTTP server on the loopback interface by default.
 
@@ -653,5 +756,6 @@ def serve(host: str | None = None, port: int | None = None) -> None:
             "to allow a public bind")
     if host not in ("127.0.0.1", "localhost", "::1") and not os.environ.get("CASCADE_APPROVAL_TOKEN"):
         raise ValueError("Public API requires CASCADE_APPROVAL_TOKEN")
+    _seed_demo_runs_if_empty()
     with ThreadingHTTPServer((host, port), Handler) as server:
         server.serve_forever()

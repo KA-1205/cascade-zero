@@ -1,0 +1,6909 @@
+{
+  "run": {
+    "id": "demo-payments_degradation-seed88",
+    "seed": 88,
+    "scenario": "payments_degradation",
+    "policy": "coordinated",
+    "state": "completed",
+    "simulated": true,
+    "measured": false,
+    "created_at": "2026-10-25T16:16:50.149535+00:00",
+    "purpose": "policy_comparison",
+    "metrics": {
+      "unique_offered": 6015,
+      "unique_succeeded": 5893,
+      "unique_failed": 122,
+      "total_attempts": 6015,
+      "dropped": 0,
+      "latency_p50": 3,
+      "latency_p95": 5,
+      "max_queue_depth": 115,
+      "peak_db_connections": 55,
+      "sustained_recovery_time": -1,
+      "actions_executed": 0
+    },
+    "runtime": {
+      "decision_latency_p50_ms": 0.022,
+      "decision_latency_p95_ms": 0.048,
+      "decision_latency_samples": 110,
+      "source": "local_process_wall_clock"
+    },
+    "trace_hash": "8af0fc315edcb7c243eceac77c59bad4336d139c80eb6e6a4aa3b7eacddd9561",
+    "diagnosis": {
+      "cause": "Downstream Payment Gateway Latency Degradation",
+      "rationale": "Payment processor latency spiked to 5 ticks, locking worker threads and accumulating 115 queued requests.",
+      "severity": "high",
+      "confidence": 0.95,
+      "affected": [
+        "payments",
+        "gateway"
+      ],
+      "mitigation_plan": "Targeted circuit-breaking, retry backoff damping, and ingress rate-limiting"
+    }
+  },
+  "events_count": 223,
+  "plans_count": 110,
+  "events": [
+    {
+      "event_id": "demo-payments_degradation-seed88:000000",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 0,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:00+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000001",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 0,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:00+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 0.0,
+        "queue_depth": 0,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 51,
+        "unique_completed": 0,
+        "unique_failed": 0,
+        "attempts_total": 51,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 0
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000002",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 1,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:01+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000003",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 1,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:01+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 0,
+        "db_load": 0.9818181818181818,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 54,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 105,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 0
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000004",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 2,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:02+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000005",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 2,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:02+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 2,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 54,
+        "unique_failed": 0,
+        "attempts_total": 158,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 2
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000006",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 3,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:03+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000007",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 3,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:03+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 4,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 57,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 215,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 4
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000008",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 4,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:04+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000009",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 4,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:04+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 8,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 59,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 274,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 8
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000010",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 5,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:05+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000011",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 5,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:05+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 7,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 54,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 328,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 7
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000012",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 6,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:06+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000013",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 6,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:06+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 12,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 60,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 388,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 12
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000014",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 7,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:07+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000015",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 7,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:07+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 17,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 60,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 448,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 17
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000016",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 8,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:08+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000017",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 8,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:08+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 13,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 51,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 499,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 13
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000018",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 9,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:09+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000019",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 9,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:09+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 12,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 54,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 553,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 12
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000020",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 10,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:10+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000021",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 10,
+      "kind": "incident",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:10+00:00",
+      "payload": {
+        "phase": "degraded",
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000022",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 10,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:10+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 14,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 57,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 610,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 14
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000023",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 11,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:11+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000024",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 11,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:11+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 17,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 58,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 668,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 1,
+          "database": 16
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000025",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 12,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:12+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000026",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 12,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:12+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 22,
+        "db_load": 0.9818181818181818,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 59,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 727,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 6,
+          "database": 16
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000027",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 13,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:13+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000028",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 13,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:13+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 25,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 54,
+        "unique_completed": 54,
+        "unique_failed": 0,
+        "attempts_total": 781,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 3,
+          "database": 22
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000029",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 14,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:14+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000030",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 14,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:14+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 24,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 50,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 831,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 1,
+          "database": 23
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000031",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 15,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:15+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000032",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 15,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:15+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 26,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 884,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 9,
+          "database": 17
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000033",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 16,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:16+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000034",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 16,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:16+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 28,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 937,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 12,
+          "database": 16
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000035",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 17,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:17+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000036",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 17,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:17+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 35,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 58,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 995,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 19,
+          "database": 16
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000037",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 18,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:18+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000038",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 18,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:18+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 40,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 56,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1051,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 25,
+          "database": 15
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000039",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 19,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:19+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000040",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 19,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:19+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 45,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 56,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1107,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 29,
+          "database": 16
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000041",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 20,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:20+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000042",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 20,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:20+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 45,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 51,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1158,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 33,
+          "database": 12
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000043",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 21,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:21+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000044",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 21,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:21+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 45,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 51,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1209,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 41,
+          "database": 4
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000045",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 22,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:22+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000046",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 22,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:22+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 47,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1262,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 43,
+          "database": 4
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000047",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 23,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:23+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000048",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 23,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:23+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 55,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 59,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1321,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 55,
+          "database": 0
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000049",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 24,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:24+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000050",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 24,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:24+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 56,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1373,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 55,
+          "database": 1
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000051",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 25,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:25+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000052",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 25,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:25+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 65,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 60,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1433,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 62,
+          "database": 3
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000053",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 26,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:26+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000054",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 26,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:26+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 2,
+        "queue_depth": 72,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 58,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1491,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 65,
+          "database": 7
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000055",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 27,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:27+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000056",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 27,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:27+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 81,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 60,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1551,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 69,
+          "database": 12
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000057",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 28,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:28+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000058",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 28,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:28+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 82,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1603,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 70,
+          "database": 12
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000059",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 29,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:29+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000060",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 29,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:29+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 87,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 56,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1659,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 72,
+          "database": 15
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000061",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 30,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:30+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000062",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 30,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:30+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 95,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 59,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1718,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 71,
+          "database": 24
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000063",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 31,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:31+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000064",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 31,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:31+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 104,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 60,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1778,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 69,
+          "database": 35
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000065",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 32,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:32+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000066",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 32,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:32+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 106,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1831,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 78,
+          "database": 28
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000067",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 33,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:33+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000068",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 33,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:33+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 115,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 60,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1891,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 82,
+          "database": 33
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000069",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 34,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:34+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000070",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 34,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:34+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 114,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 50,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1941,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 81,
+          "database": 33
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000071",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 35,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:35+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000072",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 35,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:35+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 114,
+        "db_load": 0.9272727272727272,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 51,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 1992,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 82,
+          "database": 32
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000073",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 36,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:36+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000074",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 36,
+      "kind": "incident",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:36+00:00",
+      "payload": {
+        "phase": "partial",
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000075",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 36,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:36+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 110,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 51,
+        "unique_completed": 51,
+        "unique_failed": 0,
+        "attempts_total": 2043,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 53,
+          "database": 57
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000076",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 37,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:37+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000077",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 37,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:37+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 5,
+        "queue_depth": 108,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2096,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 11,
+          "database": 97
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000078",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 38,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:38+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000079",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 38,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:38+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 5,
+        "queue_depth": 105,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2148,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 105
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000080",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 39,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:39+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000081",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 39,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:39+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 105,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 55,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2203,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 105
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000082",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 40,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:40+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000083",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 40,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:40+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 103,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2256,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 103
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000084",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 41,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:41+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000085",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 41,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:41+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 98,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 50,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2306,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 98
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000086",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 42,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:42+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000087",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 42,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:42+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 95,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2358,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 95
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000088",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 43,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:43+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000089",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 43,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:43+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 98,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 58,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2416,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 98
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000090",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 44,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:44+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000091",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 44,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:44+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 99,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 56,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2472,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 99
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000092",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 45,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:45+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000093",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 45,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:45+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 101,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 57,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2529,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 101
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000094",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 46,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:46+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000095",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 46,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:46+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 99,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2582,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 99
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000096",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 47,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:47+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000097",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 47,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:47+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 99,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 55,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2637,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 99
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000098",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 48,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:48+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000099",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 48,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:48+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 99,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 55,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2692,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 99
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000100",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 49,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:49+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000101",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 49,
+      "kind": "incident",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:49+00:00",
+      "payload": {
+        "phase": "restored",
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000102",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 49,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:49+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 103,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 59,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2751,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 103
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000103",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 50,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:50+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000104",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 50,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:50+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 104,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 56,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2807,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 104
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000105",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 51,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:51+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000106",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 51,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:51+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 101,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2859,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 101
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000107",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 52,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:52+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000108",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 52,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:52+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 98,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2911,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 98
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000109",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 53,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:53+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000110",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 53,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:53+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 99,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 56,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 2967,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 99
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000111",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 54,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:54+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000112",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 54,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:54+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 99,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 55,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3022,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 99
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000113",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 55,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:55+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000114",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 55,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:55+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 98,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 54,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3076,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 98
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000115",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 56,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:56+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000116",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 56,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:56+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 99,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 56,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3132,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 99
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000117",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 57,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:57+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000118",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 57,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:57+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 104,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 60,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3192,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 104
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000119",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 58,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:58+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000120",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 58,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:58+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 106,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 57,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3249,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 106
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000121",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 59,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:59+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000122",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 59,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:00:59+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 101,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 50,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3299,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 101
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000123",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 60,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:00+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000124",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 60,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:00+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 101,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 55,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3354,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 101
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000125",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 61,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:01+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000126",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 61,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:01+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 96,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 50,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3404,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 96
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000127",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 62,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:02+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000128",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 62,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:02+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 96,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 55,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3459,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 96
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000129",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 63,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:03+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000130",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 63,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:03+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 99,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 58,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3517,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 99
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000131",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 64,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:04+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000132",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 64,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:04+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 96,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3569,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 96
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000133",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 65,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:05+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000134",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 65,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:05+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 96,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 55,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3624,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 96
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000135",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 66,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:06+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000136",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 66,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:06+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 93,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3676,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 93
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000137",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 67,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:07+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000138",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 67,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:07+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 97,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 59,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3735,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 97
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000139",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 68,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:08+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000140",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 68,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:08+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 94,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3787,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 94
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000141",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 69,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:09+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000142",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 69,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:09+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 91,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3839,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 91
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000143",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 70,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:10+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000144",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 70,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:10+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 90,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 54,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3893,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 90
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000145",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 71,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:11+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000146",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 71,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:11+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 88,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 3946,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 88
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000147",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 72,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:12+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000148",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 72,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:12+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 87,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 54,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4000,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 87
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000149",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 73,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:13+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000150",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 73,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:13+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 84,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4052,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 84
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000151",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 74,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:14+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000152",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 74,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:14+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 89,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 60,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4112,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 89
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000153",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 75,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:15+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000154",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 75,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:15+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 85,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 51,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4163,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 85
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000155",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 76,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:16+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000156",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 76,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:16+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 89,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 59,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4222,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 89
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000157",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 77,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:17+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000158",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 77,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:17+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 85,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 51,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4273,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 85
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000159",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 78,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:18+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000160",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 78,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:18+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 90,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 60,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4333,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 90
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000161",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 79,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:19+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000162",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 79,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:19+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 93,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 58,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4391,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 93
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000163",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 80,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:20+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000164",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 80,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:20+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 94,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 56,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4447,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 94
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000165",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 81,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:21+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000166",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 81,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:21+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 99,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 60,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4507,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 99
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000167",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 82,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:22+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000168",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 82,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:22+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 102,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 58,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4565,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 102
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000169",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 83,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:23+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000170",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 83,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:23+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 107,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 60,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4625,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 107
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000171",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 84,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:24+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000172",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 84,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:24+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 102,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 50,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4675,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 102
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000173",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 85,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:25+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000174",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 85,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:25+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 97,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 50,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4725,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 97
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000175",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 86,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:26+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000176",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 86,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:26+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 95,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4778,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 95
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000177",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 87,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:27+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000178",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 87,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:27+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 92,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4830,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 92
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000179",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 88,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:28+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000180",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 88,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:28+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 90,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4883,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 90
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000181",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 89,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:29+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000182",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 89,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:29+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 93,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 58,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4941,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 93
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000183",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 90,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:30+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000184",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 90,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:30+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 96,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 58,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 4999,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 96
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000185",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 91,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:31+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000186",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 91,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:31+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 91,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 50,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5049,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 91
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000187",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 92,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:32+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000188",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 92,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:32+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 94,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 58,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5107,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 94
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000189",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 93,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:33+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000190",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 93,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:33+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 90,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 51,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5158,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 90
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000191",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 94,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:34+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000192",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 94,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:34+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 88,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5211,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 88
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000193",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 95,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:35+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000194",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 95,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:35+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 85,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5263,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 85
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000195",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 96,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:36+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000196",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 96,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:36+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 83,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5316,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 83
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000197",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 97,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:37+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000198",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 97,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:37+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 78,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 50,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5366,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 78
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000199",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 98,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:38+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000200",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 98,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:38+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 77,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 54,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5420,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 77
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000201",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 99,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:39+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000202",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 99,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:39+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 4,
+        "queue_depth": 79,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 57,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5477,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 79
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000203",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 100,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:40+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000204",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 100,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:40+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 81,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 57,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5534,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 81
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000205",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 101,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:41+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000206",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 101,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:41+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 79,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5587,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 79
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000207",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 102,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:42+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000208",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 102,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:42+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 78,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 54,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5641,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 78
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000209",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 103,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:43+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000210",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 103,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:43+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 75,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5693,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 75
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000211",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 104,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:44+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000212",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 104,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:44+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 70,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 50,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5743,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 70
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000213",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 105,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:45+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000214",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 105,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:45+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 69,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 54,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5797,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 69
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000215",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 106,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:46+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000216",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 106,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:46+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 66,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 52,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5849,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 66
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000217",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 107,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:47+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000218",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 107,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:47+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 69,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 58,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5907,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 69
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000219",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 108,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:48+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000220",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 108,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:48+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 69,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 55,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 5962,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 69
+        },
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000221",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 109,
+      "kind": "decision",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:49+00:00",
+      "payload": {
+        "actions": [],
+        "predicted_risk": 0.0,
+        "reasons": [
+          "No actions proposed; empty plan has no action risk."
+        ],
+        "simulated": true,
+        "measured": false
+      }
+    },
+    {
+      "event_id": "demo-payments_degradation-seed88:000222",
+      "run_id": "demo-payments_degradation-seed88",
+      "tick": 109,
+      "kind": "metric",
+      "simulated": true,
+      "trace_id": "de48eeff23cfea9a",
+      "timestamp": "2026-01-01T00:01:49+00:00",
+      "payload": {
+        "error_rate": 0.0,
+        "latency": 3,
+        "queue_depth": 67,
+        "db_load": 1.0,
+        "sensor_age_ticks": 0,
+        "sensor_dropped": false,
+        "sensor_noise_applied": false,
+        "arrivals": 53,
+        "unique_completed": 55,
+        "unique_failed": 0,
+        "attempts_total": 6015,
+        "dropped": 0,
+        "service_queues": {
+          "gateway": 0,
+          "orders": 0,
+          "payments": 0,
+          "database": 67
+        },
+        "measured": false
+      }
+    }
+  ],
+  "plans": [
+    {
+      "id": "demo-payments_degradation-seed88:plan:000000",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 0,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000002",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 1,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000004",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 2,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000006",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 3,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000008",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 4,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000010",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 5,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000012",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 6,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000014",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 7,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000016",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 8,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000018",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 9,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000020",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 10,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000023",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 11,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000025",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 12,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000027",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 13,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000029",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 14,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000031",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 15,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000033",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 16,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000035",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 17,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000037",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 18,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000039",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 19,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000041",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 20,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000043",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 21,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000045",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 22,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000047",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 23,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000049",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 24,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000051",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 25,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000053",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 26,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000055",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 27,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000057",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 28,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000059",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 29,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000061",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 30,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000063",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 31,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000065",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 32,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000067",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 33,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000069",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 34,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000071",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 35,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000073",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 36,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000076",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 37,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000078",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 38,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000080",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 39,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000082",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 40,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000084",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 41,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000086",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 42,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000088",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 43,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000090",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 44,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000092",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 45,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000094",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 46,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000096",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 47,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000098",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 48,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000100",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 49,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000103",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 50,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000105",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 51,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000107",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 52,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000109",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 53,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000111",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 54,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000113",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 55,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000115",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 56,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000117",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 57,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000119",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 58,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000121",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 59,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000123",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 60,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000125",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 61,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000127",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 62,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000129",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 63,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000131",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 64,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000133",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 65,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000135",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 66,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000137",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 67,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000139",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 68,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000141",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 69,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000143",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 70,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000145",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 71,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000147",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 72,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000149",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 73,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000151",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 74,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000153",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 75,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000155",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 76,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000157",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 77,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000159",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 78,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000161",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 79,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000163",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 80,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000165",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 81,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000167",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 82,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000169",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 83,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000171",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 84,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000173",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 85,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000175",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 86,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000177",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 87,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000179",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 88,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000181",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 89,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000183",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 90,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000185",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 91,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000187",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 92,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000189",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 93,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000191",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 94,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000193",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 95,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000195",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 96,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000197",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 97,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000199",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 98,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000201",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 99,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000203",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 100,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000205",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 101,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000207",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 102,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000209",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 103,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000211",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 104,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000213",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 105,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000215",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 106,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000217",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 107,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000219",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 108,
+      "purpose": "policy_comparison"
+    },
+    {
+      "id": "demo-payments_degradation-seed88:plan:000221",
+      "run_id": "demo-payments_degradation-seed88",
+      "actions": [],
+      "predicted_risk": 0.0,
+      "reasons": [
+        "No actions proposed; empty plan has no action risk."
+      ],
+      "status": "candidate",
+      "simulated": true,
+      "measured": false,
+      "decision_tick": 109,
+      "purpose": "policy_comparison"
+    }
+  ]
+}

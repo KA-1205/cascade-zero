@@ -7,7 +7,7 @@
 export type RunState = 'created' | 'running' | 'completed' | 'failed' | 'cancelled';
 export type RunPolicy = 'none' | 'independent' | 'guardrails' | 'coordinated' | 'ai_coordinated';
 export type RunScenario = 'db_slowdown' | 'payments_degradation' | 'traffic_surge' | 'telemetry_faults';
-export type PlanStatus = 'candidate' | 'rejected' | 'approved' | 'delayed' | 'executed';
+export type PlanStatus = 'candidate' | 'rejected' | 'approved' | 'delayed' | 'executed' | 'superseded';
 export type IncidentSeverity = 'low' | 'medium' | 'high' | 'critical';
 export type IncidentStatus = 'active' | 'investigating' | 'resolved' | 'closed';
 
@@ -51,6 +51,14 @@ export interface Run {
     decision_latency_p95_ms: number;
     decision_latency_samples: number;
     source: 'local_process_wall_clock';
+  };
+  diagnosis?: {
+    cause: string;
+    rationale: string;
+    severity: 'low' | 'medium' | 'high' | 'critical';
+    confidence: number;
+    affected: string[];
+    mitigation_plan?: string;
   };
   /** ISO 8601 wall-clock start */
   created_at?: string;
