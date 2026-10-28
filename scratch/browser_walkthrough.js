@@ -41,6 +41,13 @@ process.on('exit',cleanup);
   await page.goto(base+'/experiments?run='+id);
   await page.getByRole('button',{name:'Compare policies',exact:true}).click();
   await expect(page.getByRole('table',{name:'Policy comparison'}).getByText('Not run')).toHaveCount(0,{timeout:60000});
+  const history = await (await context.request.get(base+'/v1/runs')).json();
+  const aiRun = history.find(r=>r.policy==='ai_coordinated');
+  const system = await (await context.request.get(base+'/v1/admin/status')).json();
+  await page.goto(base+'/incidents/'+aiRun.id);
+  await expect(page.getByLabel('Model execution evidence')).toContainText('Rule fallback');
+  await page.screenshot({path:output+'/ai-execution-evidence.png',fullPage:true});
+  fs.writeFileSync(__dirname+'/ai-verification.json',JSON.stringify({run_id:aiRun.id,engine:system.ai_engine,evidence:await page.getByLabel('Model execution evidence').innerText()},null,2));
   const views = [['overview','/overview'],['incidents','/incidents'],['incident-detail','/incidents/'+id],['plans','/plans/'+id],['experiments','/experiments?run='+id],['audit','/audit?run='+id],['admin','/admin']];
   const results = [];
   for (const size of [{width:1920,height:1080},{width:2560,height:1440}]) {
