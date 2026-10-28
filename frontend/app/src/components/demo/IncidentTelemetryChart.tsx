@@ -20,14 +20,14 @@ export function IncidentTelemetryChart({ events }: { events: CascadeEvent[] }) {
     .filter((event): event is MetricEvent => event.kind === 'metric')
     .map((event) => ({
       tick: event.tick,
-      queue: event.payload.queue_depth ?? 0,
-      error: Math.round((event.payload.error_rate ?? 0) * 1000) / 10,
+      queue: event.payload.queue_depth ?? null,
+      error: typeof event.payload.error_rate === 'number' ? Math.round(event.payload.error_rate * 1000) / 10 : null,
     }));
   const actionTicks = [...new Set(events
     .filter((event) => event.kind === 'execution')
     .map((event) => event.tick))].sort((a, b) => a - b);
 
-  if (points.length === 0) return null;
+  if (points.length === 0) return <p>No telemetry recorded.</p>;
 
   return (
     <div>
@@ -99,9 +99,9 @@ export function IncidentTelemetryChart({ events }: { events: CascadeEvent[] }) {
               <ReferenceLine key={tick} x={tick} yAxisId="error"
                              stroke="var(--warning)" strokeOpacity={0.7} />
             ))}
-            {showBacklog && <Line yAxisId="backlog" dataKey="queue" name="Backlog (queued requests)"
+            {showBacklog && <Line isAnimationActive={false} yAxisId="backlog" dataKey="queue" name="Backlog (queued requests)"
                   stroke="var(--accent)" dot={false} strokeWidth={2} />}
-            {showError && <Line yAxisId="error" dataKey="error" name="Error rate (%)"
+            {showError && <Line isAnimationActive={false} yAxisId="error" dataKey="error" name="Error rate (%)"
                   stroke="var(--danger)" dot={false} strokeWidth={2} />}
           </ComposedChart>
         </ResponsiveContainer>
