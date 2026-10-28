@@ -475,7 +475,10 @@ def simulate(seed: int, policy: str = "none", config: dict | None = None, plan=N
             if (not isinstance(selected, list) or len(selected) != len(set(selected))
                     or not set(selected) <= {p["action"] for p in proposals}):
                 raise ValueError("plan selected actions outside the proposed set")
-            extra = getattr(decision, "extra", None) or {}
+            extra = dict(getattr(decision, "extra", None) or {})
+            if "combinations" in extra:
+                extra["combinations"] = [{**item, "selected": set(item["actions"]) == set(selected)}
+                                         for item in extra["combinations"]]
             _emit(run, "decision", {"actions": selected, "predicted_risk": decision.predicted_risk,
                                     "reasons": decision.reasons, "simulated": True, **extra})
             if apply_actions:
