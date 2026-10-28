@@ -246,7 +246,7 @@ export interface AICheckResult {
 
 /** Aggregate project status from GET /v1/admin/status. */
 export interface AdminStatus {
-  backend: { state: string; runs_stored: number };
+  backend: { state: string; runs_stored: number; runs_persisted?: number };
   runs: {
     total: number;
     by_state: Record<string, number>;

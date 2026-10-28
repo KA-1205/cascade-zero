@@ -1,149 +1,34 @@
 'use client';
-
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
-import { KpiCard, LabeledRow, SectionHeader } from '@/components/ui/kit';
-import { POLICY_LABEL, SCENARIO_LABEL } from '@/lib/labels';
-import type { AdminStatus, Run } from '@/types/api';
-
-/**
- * Project admin: the command-center view over everything Cascade Zero has
- * done — system health, the AI engine's condition, recent activity, and the
- * scenario/policy configuration.
- */
+import { SCENARIO_LABEL, POLICY_LABEL } from '@/lib/labels';
+import type { AdminStatus, Run, RunScenario } from '@/types/api';
 export function AdminDashboard() {
   const [status, setStatus] = useState<AdminStatus | null>(null);
   const [runs, setRuns] = useState<Run[]>([]);
   const [error, setError] = useState('');
-
+  const [busy, setBusy] = useState(false);
+  const [scenario, setScenario] = useState<RunScenario>('db_slowdown');
   const load = useCallback(async () => {
-    try {
-      const [nextStatus, nextRuns] = await Promise.all([
-        api.getAdminStatus(), api.listRuns(),
-      ]);
-      setStatus(nextStatus); setRuns(nextRuns); setError('');
-    } catch (reason) {
-      setError(reason instanceof Error ? reason.message : 'Could not load admin status');
-    }
+    try { const [next, history] = await Promise.all([api.getAdminStatus(), api.listRuns()]); setStatus(next); setRuns(history); setError(''); }
+    catch (reason) { setStatus(null); setError(reason instanceof Error ? reason.message : 'Backend unavailable'); }
   }, []);
-
-  useEffect(() => {
-    // Initial load in a timer callback so no setState runs synchronously in
-    // the effect body (same pattern as Header's clock).
-    const initial = setTimeout(load, 0);
-    window.addEventListener('cascade-run-changed', load);
-    return () => {
-      clearTimeout(initial);
-      window.removeEventListener('cascade-run-changed', load);
-    };
-  }, [load]);
-
-  if (error) {
-    return <div role="alert" className="surface" style={{
-      padding: 20, border: '1px solid var(--danger)', color: 'var(--danger)',
-    }}>{error}. Start the backend with <code>python -m backend.api</code> and reload.</div>;
+  useEffect(() => { const initial = setTimeout(load, 0); const timer = setInterval(load, 5000); return () => { clearTimeout(initial); clearInterval(timer); }; }, [load]);
+  async function start() {
+    setBusy(true); setError('');
+    try { await api.createRun({ seed: Math.floor(Math.random() * 100000), scenario, policy: 'ai_coordinated', purpose: 'operator_review' }); await load(); }
+    catch (reason) { setError(reason instanceof Error ? reason.message : 'Run creation failed'); }
+    finally { setBusy(false); }
   }
-  if (!status) return <div className="surface" style={{ padding: 20 }}>Loading project status…</div>;
-
-  const ai = status.ai_engine;
-  const aiTotal = ai.live_decisions + ai.fallback_decisions;
-  const liveRate = aiTotal ? Math.round((ai.live_decisions / aiTotal) * 100) : null;
-  const successRate = status.transactions.offered
-    ? Math.round((status.transactions.succeeded / status.transactions.offered) * 100)
-    : null;
-
-  return (
-    <main className="console-page console-page--admin">
-      <div className="page-heading">
-        <div>
-          <h1>Project Admin</h1>
-          <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>
-            Everything the system has done, updated whenever a run finishes.
-          </p>
-        </div>
-        <span className="page-mode-tag"><span aria-hidden="true" /> Local simulator</span>
-      </div>
-
-      <section className="kpi-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(200px,1fr))', gap: 12 }}>
-        <KpiCard label="Runs executed" value={status.runs.total}
-                  context={`${status.runs.by_state.completed ?? 0} completed · ${status.runs.by_state.running ?? 0} running`} />
-        <KpiCard label="Transactions protected" value={status.transactions.succeeded.toLocaleString()}
-                  context={`of ${status.transactions.offered.toLocaleString()} offered · ${successRate !== null ? successRate + '% succeeded' : ''}`}
-                  tone={successRate !== null && successRate >= 70 ? 'good' : 'warn'} />
-        <KpiCard label="Recovery actions" value={status.transactions.actions.toLocaleString()}
-                  context="executed across all runs" />
-        <KpiCard label="AI live decisions" value={ai.live_decisions.toLocaleString()}
-                  context={liveRate !== null ? `${liveRate}% of ${aiTotal} AI decisions went to the live model` : 'no AI decisions yet'}
-                  tone={ai.provider_configured ? (liveRate !== null && liveRate > 0 ? 'good' : 'warn') : 'bad'} />
-      </section>
-
-      <div className="admin-panels-grid">
-        <div className="admin-panel-col">
-          <section className="surface dashboard-panel" style={{ padding: 20 }}>
-            <SectionHeader index="01" title="System status" subtitle="Backend and provider health right now." />
-            <LabeledRow label="Backend API">
-              <span style={{ color: 'var(--success)', fontWeight: 600 }}>● healthy</span>
-            </LabeledRow>
-            <LabeledRow label="Runs stored in memory">{status.backend.runs_stored} (cleared on restart)</LabeledRow>
-            <LabeledRow label="AI provider key (GEMINI_API_KEY)">
-              {ai.provider_configured
-                ? <span style={{ color: 'var(--success)' }}>configured</span>
-                : <span style={{ color: 'var(--danger)' }}>not set, so AI runs fall back to the rule coordinator</span>}
-            </LabeledRow>
-            <LabeledRow label="Default model">{ai.model}</LabeledRow>
-          </section>
-
-          <section className="surface dashboard-panel" style={{ padding: 20 }}>
-            <SectionHeader index="02" title="Inference & Safety Policy Engine" subtitle="Autonomous recovery decision telemetry and fallback frequency." />
-            <LabeledRow label="Live model proposals">{ai.live_decisions.toLocaleString()}</LabeledRow>
-            <LabeledRow label="Deterministic fallback evaluations">{ai.fallback_decisions.toLocaleString()}</LabeledRow>
-            {Object.entries(ai.top_fallback_reasons).map(([reason, count]) => (
-              <LabeledRow key={reason} label={`↳ ${reason}`}>{count.toLocaleString()} decisions</LabeledRow>
-            ))}
-            {Object.keys(ai.top_fallback_reasons).length === 0 && (
-              <LabeledRow label="Fallback reasons">none recorded</LabeledRow>
-            )}
-          </section>
-        </div>
-
-        <div className="admin-panel-col">
-          <section className="surface dashboard-panel" style={{ padding: 20 }}>
-            <SectionHeader index="03" title="Recent activity" subtitle="The latest runs, newest first." />
-            {runs.slice(0, 8).map((run) => (
-              <LabeledRow key={run.id} label={
-                <span>
-                  {run.created_at ? new Date(run.created_at).toLocaleTimeString() : ''}
-                  {' · '}{SCENARIO_LABEL[run.scenario] ?? run.scenario}
-                </span>
-              }>
-                <Link href={`/incidents/${run.id}`} style={{ color: 'var(--accent)' }}>
-                  {POLICY_LABEL[run.policy] ?? run.policy}
-                </Link>
-                {' · '}{run.metrics?.unique_failed !== undefined
-                  ? `${run.metrics.unique_failed.toLocaleString()} failed` : run.state}
-              </LabeledRow>
-            ))}
-            {runs.length === 0 && <p style={{ color: 'var(--text-muted)', fontSize: 13 }}>No runs yet.</p>}
-          </section>
-
-          <section className="surface dashboard-panel" style={{ padding: 20 }}>
-            <SectionHeader index="04" title="Scenarios & policies" subtitle="What can be simulated, and what each policy means." />
-            {Object.entries(status.scenarios).map(([name, config]) => (
-              <LabeledRow key={name} label={SCENARIO_LABEL[name as keyof typeof SCENARIO_LABEL] ?? name}>
-                actions: {config.actions_available.join(' · ')}
-              </LabeledRow>
-            ))}
-            {Object.keys(status.runs.by_policy).length > 0 && (
-              <LabeledRow label="Policies exercised">
-                {Object.entries(status.runs.by_policy)
-                  .map(([policy, count]) => `${POLICY_LABEL[policy as keyof typeof POLICY_LABEL] ?? policy} ×${count}`)
-                  .join(' · ')}
-              </LabeledRow>
-            )}
-          </section>
-        </div>
-      </div>
-    </main>
-  );
+  return <main className="console-page console-page--admin"><div className="page-heading"><div><h1>System & coordinator</h1><p>Backend status · refreshed every 5 seconds</p></div><button onClick={load}>Refresh status</button></div>
+    {error && <div className="console-error" role="alert">{error}</div>}{!status && !error && <p role="status">Loading system status…</p>}
+    {status && <><section className="metric-ribbon"><div><span>Backend</span><strong>{status.backend.state}</strong><small>Python API</small></div><div><span>Runs persisted</span><strong>{status.backend.runs_persisted ?? '—'}</strong><small>{status.runs.total} in memory</small></div><div><span>Live model decisions</span><strong>{status.ai_engine.live_decisions}</strong><small>{status.ai_engine.model}</small></div><div><span>Fallback decisions</span><strong>{status.ai_engine.fallback_decisions}</strong><small>Recorded by the coordinator</small></div></section>
+    <div className="master-detail admin-grid"><section className="panel detail-pane"><header className="panel-heading"><h2>Engine & scenario inventory</h2><span>{Object.keys(status.scenarios).length} scenarios</span></header><div className="pane-scroll detail-content">
+    <dl className="receipt-fields"><dt>Model</dt><dd>{status.ai_engine.model}</dd><dt>Provider credentials</dt><dd>{status.ai_engine.provider_configured ? 'Configured; availability is shown by decision outcomes' : 'Not configured; deterministic fallback'}</dd><dt>Running</dt><dd>{status.runs.by_state.running ?? 0}</dd><dt>Completed</dt><dd>{status.runs.by_state.completed ?? 0}</dd></dl>
+    <h3>Fallback reasons</h3>{Object.entries(status.ai_engine.top_fallback_reasons).map(([reason,count]) => <p key={reason}>{reason} <strong>{count}</strong></p>)}{!Object.keys(status.ai_engine.top_fallback_reasons).length && <p>No fallback reasons recorded.</p>}
+    <h3>Available scenarios</h3>{Object.entries(status.scenarios).map(([name,config]) => <div className="inventory-row" key={name}><strong>{SCENARIO_LABEL[name as RunScenario] ?? name}</strong><p>{config.actions_available.join(' · ')}</p></div>)}</div>
+    <footer className="panel-actions"><label>Scenario<select value={scenario} onChange={e => setScenario(e.target.value as RunScenario)}>{Object.keys(status.scenarios).map(name => <option key={name} value={name}>{SCENARIO_LABEL[name as RunScenario] ?? name}</option>)}</select></label><button onClick={start} disabled={busy}>{busy ? 'Starting…' : 'Start background simulation'}</button></footer></section>
+    <section className="panel detail-pane"><header className="panel-heading"><h2>Run activity</h2><span>{runs.length} retained</span></header><div className="pane-scroll detail-content"><table className="data-table"><thead><tr><th>Scenario / seed</th><th>Policy</th><th>State</th><th>Failed</th></tr></thead><tbody>{runs.map(run => <tr key={run.id}><td><Link href={`/incidents/${run.id}`}>{SCENARIO_LABEL[run.scenario]}</Link><small>Seed {run.seed} · {run.created_at}</small></td><td>{POLICY_LABEL[run.policy]}</td><td>{run.state}</td><td>{run.metrics?.unique_failed ?? '—'}</td></tr>)}</tbody></table>{!runs.length && <p>No runs yet.</p>}</div></section></div></>}
+  </main>;
 }

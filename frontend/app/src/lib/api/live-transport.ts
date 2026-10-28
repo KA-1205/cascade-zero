@@ -86,7 +86,7 @@ export const liveTransport = {
       signal: AbortSignal.timeout(15000),
       headers,
     });
-    if (!response.ok) throw new Error(`Events for run ${runId}: ${response.status}`);
+    if (!response.ok) throw new Error(response.status === 404 ? 'Requested run not found' : `Events for run ${runId}: ${response.status}`);
     const body = await response.text();
     return body.split(/\n\n+/).flatMap((block) => {
       const line = block.split('\n').find((part) => part.startsWith('data: '));
@@ -121,7 +121,7 @@ export const liveTransport = {
    * what-if replay of the plan; requires the operator token server-side.
    */
   async backtestPlan(planId: string): Promise<BacktestResult> {
-    return apiFetch<BacktestResult>(`/api/backtest/${encodeURIComponent(planId)}`, {
+    return apiFetch<BacktestResult>(`/v1/plans/${encodeURIComponent(planId)}/backtest`, {
       method: 'POST',
       body: '{}',
     });
@@ -134,7 +134,7 @@ export const liveTransport = {
    */
   async decidePlan(planId: string, approved: boolean, reason?: string): Promise<void> {
     const key = crypto.randomUUID();
-    await apiFetch<void>(`/api/approval/${encodeURIComponent(planId)}`, {
+    await apiFetch<void>(`/v1/plans/${encodeURIComponent(planId)}/approval`, {
       method: 'POST',
       headers: { 'Idempotency-Key': key },
       body: JSON.stringify({ approved, reason }),

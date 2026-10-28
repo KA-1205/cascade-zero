@@ -184,7 +184,7 @@ components:
         run_id: {type: string}
         actions: {type: array, items: {type: string}}
         predicted_risk: {type: number, minimum: 0, maximum: 1}
-        status: {type: string, enum: [candidate, rejected, approved, delayed, executed]}
+        status: {type: string, enum: [candidate, rejected, approved, delayed, executed, superseded]}
         simulated: {type: boolean}
         reasons: {type: array, items: {type: string}}
         ai: {type: object, description: AI-loop provenance (diagnosis, model, probes, checks, fallback); present on ai_coordinated plans., additionalProperties: true}

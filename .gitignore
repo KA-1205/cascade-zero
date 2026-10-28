@@ -18,3 +18,11 @@ frontend/app/playwright-report/
 backend/data/runs/*.json
 !backend/data/runs/demo-*.json
 
+
+.venv/
+*.egg-info/
+scratch/screenshots/
+scratch/verification*.json
+scratch/browser-runtime/
+scratch/browsers/
+scratch/run-id.txt
