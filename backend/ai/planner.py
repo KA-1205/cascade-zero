@@ -182,6 +182,7 @@ class AIPlanner:
         self.live_decisions = 0
         self.consecutive_failures = 0
         self.circuit_open = False
+        self.first_failure_reason = None
         disabled = set(self.overlay.get("actions", {}).get("disabled_actions", []))
         self.enabled_actions = ["increase_retries", "add_replicas",
                                 "restart_service"]
@@ -282,6 +283,7 @@ class AIPlanner:
         base_extra: dict[str, Any] = {"ai": {
             "live": False, "model": None, "fallback_reason": None,
             "calls": self.calls, "live_decisions": self.live_decisions,
+            "first_failure_reason": self.first_failure_reason, "circuit_open": self.circuit_open,
             "checks": [c.to_dict() for c in self.checks],
         }}
         if finalized:
@@ -309,9 +311,12 @@ class AIPlanner:
 
         def provider_failure(exc: Exception) -> AIDecision:
             reason = getattr(exc, "reason", None) or exc.__class__.__name__
+            self.first_failure_reason = self.first_failure_reason or reason
+            base_extra["ai"]["first_failure_reason"] = self.first_failure_reason
             self.consecutive_failures += 1
             if self.consecutive_failures >= 3:
                 self.circuit_open = True
+                base_extra["ai"]["circuit_open"] = True
             return self._fallback_decision(state, fresh, reason, base_extra)
 
         try:
