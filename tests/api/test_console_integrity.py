@@ -205,3 +205,22 @@ def test_payments_live_run_returns_before_completion_and_records_subsets(api):
         assert sum(c['selected'] for c in subsets) == 1
         assert next(c['actions'] for c in subsets if c['selected']) == sorted(p['actions'])
         assert all('add_replicas' not in c['actions'] for c in subsets)
+
+
+def test_provider_check_reports_missing_credentials_without_claiming_success(api):
+    status, result = request(api, '/v1/ai/check', {})
+    assert status == 503 and result['ok'] is False
+    assert result['reason'] == 'no_client_configured'
+    assert result['model']
+
+
+def test_provider_check_requires_authority_and_returns_verified_model(api, monkeypatch):
+    from urllib.error import HTTPError
+    with pytest.raises(HTTPError) as denied:
+        urlopen(Request(api + '/v1/ai/check', data=b'{}'))
+    assert denied.value.code == 403
+    def success(self, prompt, schema):
+        assert schema['required'] == ['ok']
+        return {'ok': True}, 'provider-model-version'
+    monkeypatch.setattr(backend.GeminiClient, 'generate_json', success)
+    assert request(api, '/v1/ai/check', {}) == (200, {'ok': True, 'model': 'provider-model-version'})
