@@ -118,6 +118,8 @@ def test_transport_failure_falls_back_with_reason():
                if e["payload"]["ai"].get("fallback_reason")]
     assert reasons[:3] == ["http_status:429"] * 3
     assert set(reasons[3:]) == {"circuit_open"}
+    blocked = [e['payload']['ai'] for e in decision_events(result) if e['payload']['ai'].get('circuit_open')]
+    assert blocked and all(info['first_failure_reason'] == 'http_status:429' for info in blocked)
     assert all(not e["payload"]["ai"]["live"]
                for e in decision_events(result))
 
