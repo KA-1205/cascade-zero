@@ -95,3 +95,20 @@ test('payments streams ticks and exposes scored combinations during the run', as
   await expect(page.locator('.heading-actions .status-pill')).toHaveText('running');
   await expect(page.getByRole('table',{name:'Evaluated action combinations'}).locator('tbody tr')).not.toHaveCount(1);
 });
+
+
+test('DB cockpit displays all eight scored subsets without opening a plan', async ({page,request}) => {
+  await page.setViewportSize({width:1920,height:1080});
+  const response = await request.post('/v1/runs',{data:{seed:42,scenario:'db_slowdown',policy:'coordinated',purpose:'operator_review',live:true}});
+  const run = await response.json();
+  await page.goto(`/incidents/${run.id}`);
+  const table = page.getByRole('table',{name:'Live action combinations'});
+  await expect(table.locator('tbody tr')).toHaveCount(8,{timeout:20000});
+  await expect(page.locator('.combination-summary')).toContainText('3 proposed actions');
+  await expect(page.locator('.heading-actions .status-pill')).toHaveText('running');
+  await page.getByRole('button',{name:'Event ticker',exact:true}).click();
+  await expect(page.locator('.event-ticker')).toBeVisible();
+  await page.getByRole('button',{name:'Action combinations',exact:true}).click();
+  await expect(table).toBeVisible();
+  await page.screenshot({path:'../../scratch/screenshots/db-live-combinations.png',fullPage:true});
+});
