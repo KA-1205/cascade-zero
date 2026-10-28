@@ -19,6 +19,7 @@ test('operator can stream, replay, compare, approve once, and inspect a signed r
   await page.getByLabel('Simulation seed').fill('137');
   await page.getByLabel('Policy', {exact:true}).selectOption('coordinated');
   await page.getByRole('button', {name:'Generate incident',exact:true}).click();
+  await expect(page.locator('.heading-actions .status-pill')).toHaveText('running');
   await expect(page.locator('.heading-actions .status-pill')).toHaveText('completed', {timeout:30000});
   await expect(page.locator('.stream-status')).toContainText('SSE');
   await page.getByRole('button',{name:'Pause live stream'}).click();

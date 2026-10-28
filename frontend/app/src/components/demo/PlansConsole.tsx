@@ -21,6 +21,7 @@ export function PlansConsole({ plans, run, refresh }: { plans: Plan[]; run: Run;
   const approvedPlan = plans.find(p => p.status === 'approved' || p.status === 'executed' || p.status === 'delayed');
   async function decide(plan: Plan, approved: boolean) {
     if (busy || approvedPlan || plan.status !== 'candidate' || plan.decision_tick !== maxPlanTick) return;
+    setSelectedPlanId(plan.id);
     setBusy(true); setError('');
     try { await api.decidePlan(plan.id, approved, operatorNotes[plan.id]?.trim() ?? ''); refresh(); }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Decision failed'); }
