@@ -201,6 +201,8 @@ export type SseStatus = 'connecting' | 'connected' | 'reconnecting' | 'failed' |
 
 /** AI-loop provenance merged into decision events and plans (ai_coordinated). */
 export interface AIDecisionInfo {
+  first_failure_reason?: string | null;
+  circuit_open?: boolean;
   live: boolean;
   model: string | null;
   fallback_reason: string | null;
