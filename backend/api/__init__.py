@@ -173,7 +173,6 @@ def _admin_status() -> dict:
     """Aggregate project status: run counts, AI engine health, scenario menus."""
     from collections import Counter
 
-    from backend.ai.client import DEFAULT_MODEL
 
     with _lock:
         stores = [(dict(stored["run"]), list(stored["events"])) for stored in _runs.values()]
@@ -218,7 +217,7 @@ def _admin_status() -> dict:
         },
         "transactions": totals,
         "ai_engine": {
-            "model": os.environ.get("GEMMA_MODEL", "").strip() or DEFAULT_MODEL,
+            "model": GeminiClient().model,
             "provider_configured": bool(os.environ.get("GEMINI_API_KEY")),
             "live_decisions": ai_live,
             "fallback_decisions": ai_fallback,
@@ -444,6 +443,18 @@ class Handler(BaseHTTPRequestHandler):
         path = self.path.split("?", 1)[0]
         if path == "/v1/runs":
             return self._create_run()
+        if path == "/v1/ai/check":
+            if not self._authorize():
+                return self._send(403, {"error": "forbidden"})
+            client = GeminiClient(timeout=15)
+            try:
+                _, model = client.generate_json('Return exactly {"ok": true}.', {
+                    "type": "object", "properties": {"ok": {"type": "boolean", "enum": [True]}},
+                    "required": ["ok"], "additionalProperties": False})
+                return self._send(200, {"ok": True, "model": model})
+            except Exception as exc:
+                reason = getattr(exc, "reason", None) or ("no_client_configured" if not client.api_key else exc.__class__.__name__)
+                return self._send(503, {"ok": False, "model": client.model, "reason": reason})
         if path == "/v1/evaluate":
             return self._evaluate_proposals()
         match = _approval_path.fullmatch(path)
