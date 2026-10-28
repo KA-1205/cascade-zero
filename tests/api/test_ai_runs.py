@@ -97,7 +97,7 @@ def test_ai_plan_approval_verifies_against_the_recorded_trace(api):
                    {"seed": 11, "scenario": "db_slowdown", "policy": "ai_coordinated"})
     wait_for_run(api, created["id"])
     plans = call(api, f"/v1/runs/{created['id']}/plans")
-    candidate = next(plan for plan in plans if plan["actions"])
+    candidate = next(plan for plan in reversed(plans) if plan["actions"])
     call(api, f"/v1/plans/{candidate['id']}/approval", "POST",
          {"approved": True, "reason": "operator signed off"},
          headers={"Authorization": "Bearer test-token",
