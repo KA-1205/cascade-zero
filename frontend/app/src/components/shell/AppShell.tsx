@@ -70,7 +70,7 @@ export function AppShell({ children }: AppShellProps) {
             id="main-content"
             style={{
               flex: 1,
-              overflowY: 'auto',
+              overflowY: 'hidden',
               overflowX: 'hidden',
               padding: '24px',
             }}
