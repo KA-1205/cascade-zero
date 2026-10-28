@@ -52,7 +52,7 @@ def create_candidates(api):
     _, plans = request(api, f"/v1/runs/{run['id']}/plans")
     candidates = [p for p in plans if p['actions'] and p['status'] == 'candidate']
     assert len(candidates) >= 2
-    return run, candidates
+    return run, sorted(candidates, key=lambda p: p["decision_tick"], reverse=True)
 
 
 def approve(api, plan):
@@ -137,3 +137,43 @@ def test_empty_store_does_not_invent_demo_runs(api):
     backend._seed_demo_runs_if_empty()
     assert request(api, '/v1/runs') == (200, [])
     assert list(backend.DATA_DIR.glob('*.json')) == []
+
+
+def test_historical_decisions_are_simulation_only(api):
+    _, plans = create_candidates(api)
+    for approved in (True, False):
+        assert request(api, f"/v1/plans/{plans[-1]['id']}/approval", {'approved': approved})[0] == 409
+    assert request(api, f"/v1/plans/{plans[-1]['id']}/backtest", {})[0] == 200
+    assert request(api, f"/v1/plans/{plans[0]['id']}/approval", {'approved': False})[0] == 202
+
+
+def test_live_recommendations_can_be_decided_and_future_plans_stay_locked(api, monkeypatch):
+    entered, release = threading.Event(), threading.Event()
+    original = backend.simulate
+    def paused(*args, **kwargs):
+        publish = kwargs['on_event']
+        def event(e):
+            publish(e)
+            if e['kind'] == 'decision' and e['payload']['actions'] and not entered.is_set():
+                entered.set()
+                assert release.wait(10)
+        kwargs['on_event'] = event
+        return original(*args, **kwargs)
+    monkeypatch.setattr(backend, 'simulate', paused)
+    monkeypatch.setattr(backend, '_plan_callable', lambda *args: backend.default_coordinator().plan)
+    try:
+        _, run = request(api, '/v1/runs', {'seed':137, 'scenario':'db_slowdown', 'policy':'ai_coordinated', 'purpose':'operator_review'})
+        assert entered.wait(5)
+        _, plans = request(api, f"/v1/runs/{run['id']}/plans")
+        latest = next(p for p in reversed(plans) if p['actions'])
+        assert request(api, f"/v1/runs/{run['id']}")[1]['state'] == 'running'
+        assert approve(api, latest)[0] == 202
+    finally:
+        release.set()
+    import time
+    deadline = time.monotonic() + 5
+    while request(api, f"/v1/runs/{run['id']}")[1]['state'] == 'running':
+        assert time.monotonic() < deadline
+        time.sleep(.01)
+    _, final = request(api, f"/v1/runs/{run['id']}/plans")
+    assert all(p['status'] == 'superseded' for p in final if p['id'] != latest['id'])
