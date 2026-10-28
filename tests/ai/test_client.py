@@ -51,10 +51,11 @@ def test_json_from_text_without_object_raises():
 
 
 def test_model_default_and_env_override(monkeypatch):
+    monkeypatch.delenv("GEMINI_MODEL", raising=False)
     monkeypatch.delenv("GEMMA_MODEL", raising=False)
     assert GeminiClient(api_key="k").model == "gemini-3.8-flash"
     monkeypatch.setenv("GEMMA_MODEL", "models/custom")
-    assert GeminiClient(api_key="k").model == "models/custom"
+    assert GeminiClient(api_key="k").model == "custom"
     assert GeminiClient(api_key="k", model="override").model == "override"
 
 
@@ -102,7 +103,7 @@ def test_post_request_shape_and_key_header(monkeypatch):
     assert seen[0]["headers"]["X-goog-api-key"] == "test-key"
     assert seen[0]["timeout"] == 45.0
     # Gemini models ask for JSON mime mode...
-    assert seen[0]["body"]["generationConfig"] == {"responseMimeType": "application/json"}
+    assert seen[0]["body"]["generationConfig"] == {"responseMimeType": "application/json", "responseJsonSchema": SCHEMA}
 
 
 def test_gemma_generation_config_omitted(monkeypatch):
@@ -185,3 +186,25 @@ def test_text_without_braces_maps_to_malformed_body(monkeypatch):
     post_spy(monkeypatch, [wire(text="no braces here")], [])
     with pytest.raises(AITransportError, match="^malformed_body$"):
         GeminiClient(api_key="k").generate_json("p", SCHEMA)
+
+
+def test_response_schema_is_sent_to_gemini(monkeypatch):
+    seen = post_spy(monkeypatch, [wire()], [])
+    GeminiClient(api_key='k').generate_json('p', SCHEMA)
+    assert seen[0]['body']['generationConfig']['responseJsonSchema'] == SCHEMA
+
+
+def test_model_resource_prefix_is_not_url_encoded_as_part_of_id(monkeypatch):
+    seen = post_spy(monkeypatch, [wire()], [])
+    GeminiClient(api_key='k', model='models/gemini-3.8-flash').generate_json('p', SCHEMA)
+    assert seen[0]['url'].endswith('/models/gemini-3.8-flash:generateContent')
+
+
+def test_response_parts_ignore_thoughts_and_join_json_fragments(monkeypatch):
+    response = wire()
+    response['candidates'][0]['content']['parts'] = [
+        {'thought': True, 'text': 'Private reasoning with {braces}'},
+        {'text': '{"cause": '}, {'text': '"database saturation"}'},
+    ]
+    post_spy(monkeypatch, [response], [])
+    assert GeminiClient(api_key='k').generate_json('p', SCHEMA)[0]['cause'] == 'database saturation'

@@ -2,6 +2,7 @@
 import './console.css';
 import { useState } from 'react';
 import Link from 'next/link';
+import { providerFailureHelp } from '@/lib/provider-status';
 import { api } from '@/lib/api';
 import { POLICIES, POLICY_LABEL, SCENARIOS, SCENARIO_LABEL, actionListLabel, actionLabel } from '@/lib/labels';
 import type { DecisionEvent, MetricEvent, RunPolicy, RunScenario, CascadeEvent } from '@/types/api';
@@ -43,6 +44,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
   const metrics = events.filter((event): event is MetricEvent => event.kind === 'metric');
   const decisions = events.filter((event): event is DecisionEvent => event.kind === 'decision');
   const latestDecision = decisions.filter(event => event.payload.ai?.diagnosis || event.payload.ai?.fallback_reason).at(-1) ?? decisions.at(-1);
+  const firstFailure = decisions.find(event => event.payload.ai?.fallback_reason && event.payload.ai.fallback_reason !== 'circuit_open')?.payload.ai?.fallback_reason;
   const sensor = metrics.at(-1)?.payload;
   const queues: Record<string, { peak: number; last: number }> = {};
   for (const event of metrics) for (const [name, depth] of Object.entries(event.payload.service_queues ?? {})) {
@@ -72,7 +74,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
     {loading && <div role="status" className="panel detail-content">Loading backend records…</div>}
     {!run && !loading && !error && <section className="panel detail-content"><h2>No recorded runs</h2><p>Generate an incident to populate the console from the Python backend.</p>{view !== 'incident' && <Link href="/incidents">Open incident cockpit →</Link>}</section>}
     {run && <>
-      <div className="model-evidence" role="status" aria-label="Model execution evidence"><strong>{run.policy !== 'ai_coordinated' ? 'Rules policy · no model requested' : decisions.some(e => e.payload.ai?.live) ? 'Model responses verified' : decisions.some(e => e.payload.ai?.fallback_reason) ? 'Rule fallback · no verified model response' : 'Awaiting model evidence'}</strong><span>{run.policy === 'ai_coordinated' ? `${decisions.filter(e => e.payload.ai?.live).length} model decisions · ${decisions.filter(e => e.payload.ai?.fallback_reason).length} fallback decisions` : 'Select AI planner in the incident cockpit to request model decisions.'}</span>{latestDecision?.payload.ai?.fallback_reason && <span>Reason: {latestDecision.payload.ai.fallback_reason}</span>}</div>
+      <div className="model-evidence" role="status" aria-label="Model execution evidence"><strong>{run.policy !== 'ai_coordinated' ? 'Rules policy · no model requested' : decisions.some(e => e.payload.ai?.live) ? 'Model responses verified' : decisions.some(e => e.payload.ai?.fallback_reason) ? 'Rule fallback · no verified model response' : 'Awaiting model evidence'}</strong><span>{run.policy === 'ai_coordinated' ? `${decisions.filter(e => e.payload.ai?.live).length} model decisions · ${decisions.filter(e => e.payload.ai?.fallback_reason).length} fallback decisions` : 'Select AI planner in the incident cockpit to request model decisions.'}</span>{latestDecision?.payload.ai?.fallback_reason && <span>Reason: {latestDecision.payload.ai.fallback_reason}{firstFailure && latestDecision.payload.ai.fallback_reason === 'circuit_open' ? ` · Original failure: ${firstFailure}` : ''}</span>}{firstFailure && latestDecision?.payload.ai?.fallback_reason && <span>{providerFailureHelp(firstFailure)}</span>}</div>
       {view !== 'incident' && <div className="context-toolbar"><label>Selected run<select aria-label="Selected run" value={run.id} onChange={event => select(event.target.value)}>{runs.map(item => <option key={item.id} value={item.id}>{SCENARIO_LABEL[item.scenario]} · seed {item.seed} · {item.id.slice(0, 8)}</option>)}</select></label><span className="muted">{run.created_at ? new Date(run.created_at).toLocaleString() : 'Timestamp unavailable'}</span></div>}
       {(view === 'overview' || view === 'incident') && ribbon}
       {view === 'overview' && <div className="overview-grid console-fill">

@@ -112,3 +112,11 @@ test('DB cockpit displays all eight scored subsets without opening a plan', asyn
   await expect(table).toBeVisible();
   await page.screenshot({path:'../../scratch/screenshots/db-live-combinations.png',fullPage:true});
 });
+
+
+test('admin provider check exposes missing credentials with a remedy', async ({page}) => {
+  await page.goto('/admin');
+  await page.getByRole('button',{name:'Test AI connection',exact:true}).click();
+  await expect(page.getByText('Provider check failed:',{exact:false})).toContainText('no_client_configured');
+  await expect(page.getByText('Provider check failed:',{exact:false})).toContainText('Set GEMINI_API_KEY');
+});

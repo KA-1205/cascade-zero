@@ -92,7 +92,7 @@ cp .env.example .env
 python -m backend.ai.smoke db_slowdown 42   # one live end-to-end AI decision
 ```
 
-The default model is `gemini-3.8-flash`. Set `GEMMA_MODEL` to override it —
+The default model is `gemini-3.8-flash`. Set `GEMINI_MODEL` to override it (`GEMMA_MODEL` remains supported) —
 for example `gemma-4-26b-a4b-it` runs the Gemma endpoint, which is slower and
 tends to narrate in markdown when loaded (the planner's labeled fallback
 covers those calls).

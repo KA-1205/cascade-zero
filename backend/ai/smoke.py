@@ -43,7 +43,7 @@ def main() -> int:
     for event in live:
         payload = event["payload"]
         ai = payload["ai"]
-        print(f"\ntick {event.tick}: actions={payload['actions']} risk={payload['predicted_risk']}")
+        print(f"\ntick {event['tick']}: actions={payload['actions']} risk={payload['predicted_risk']}")
         print(f"  model={ai['model']} latency={ai.get('latency_ms')}ms")
         print(f"  diagnosis: {json.dumps(ai.get('diagnosis'), indent=2)}")
         if ai.get("probes"):
