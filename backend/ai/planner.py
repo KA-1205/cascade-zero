@@ -286,6 +286,7 @@ class AIPlanner:
         }}
         if finalized:
             base_extra["ai"]["checks_evaluated"] = [c.to_dict() for c in finalized]
+        base_extra.update(self.fallback.plan(state, fresh).extra)
         if not fresh:
             return AIDecision([], 0.0,
                               ["No new recovery action to consider."], base_extra)
