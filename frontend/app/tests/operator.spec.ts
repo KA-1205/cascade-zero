@@ -28,6 +28,9 @@ test('operator can stream, replay, compare, approve once, and inspect a signed r
   const href = (await plansLink.getAttribute('href'))!;
   const runId = href.split('/').at(-1)!;
   await plansLink.click();
+  await page.locator('.plans-scroll-list .plan-item-row').last().click();
+  await expect(page.getByRole('button',{name:'Approve Plan Replay',exact:false})).toHaveCount(0);
+  await expect(page.getByRole('button',{name:'Reject',exact:true})).toHaveCount(0);
   await page.getByRole('button',{name:'Simulate What-If Impact'}).click();
   await expect(page.getByText('LAB REPLAY:',{exact:false})).toBeVisible();
   await page.getByRole('link',{name:'Open in Experiment Lab →'}).click();
@@ -41,6 +44,7 @@ test('operator can stream, replay, compare, approve once, and inspect a signed r
   await expect(page.locator('.plans-scroll-list .status-superseded').first()).toBeVisible();
   await page.locator('.plans-scroll-list .plan-item-row').filter({hasText:'SUPERSEDED'}).first().click();
   await expect(page.getByText('Incident Run Decided',{exact:false})).toBeVisible();
+  await expect(page.getByRole('button',{name:'Simulate What-If Impact'})).toBeVisible();
   await page.goto(`/audit?run=${runId}`);
   await page.getByLabel('Type',{exact:true}).selectOption('verification');
   await expect(page.locator('.receipt-fields')).toContainText('HMAC-SHA256');
