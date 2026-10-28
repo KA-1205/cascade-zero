@@ -38,8 +38,16 @@ class _Malformed(ValueError):
 def _extract(wire: Any) -> tuple[str, str]:
     try:
         model_id = wire["modelVersion"]
-        text = wire["candidates"][0]["content"]["parts"][0]["text"]
-        if not isinstance(model_id, str) or not model_id or not isinstance(text, str):
+        candidate = wire["candidates"][0]
+        if candidate.get("finishReason") == "MAX_TOKENS":
+            raise AITransportError("response_truncated")
+        if candidate.get("finishReason") in ("SAFETY", "BLOCKLIST", "PROHIBITED_CONTENT"):
+            raise AITransportError("response_blocked")
+        parts = candidate["content"]["parts"]
+        text = "".join(part["text"] for part in parts
+                       if isinstance(part, dict) and not part.get("thought")
+                       and isinstance(part.get("text"), str))
+        if not isinstance(model_id, str) or not model_id or not text:
             raise _Malformed("missing model version or candidate text")
         return model_id, text
     except (KeyError, IndexError, TypeError) as exc:
@@ -70,18 +78,29 @@ class GeminiClient:
     def __init__(self, api_key: str | None = None, model: str | None = None,
                  timeout: float = 45.0, retries: int = 0):
         self.api_key = api_key if api_key is not None else os.environ.get("GEMINI_API_KEY")
-        env_model = os.environ.get("GEMMA_MODEL", "").strip()
+        env_model = (os.environ.get("GEMINI_MODEL") or os.environ.get("GEMMA_MODEL", "")).strip()
         chosen = model if model is not None else env_model
-        self.model = chosen if chosen else DEFAULT_MODEL
+        self.model = (chosen.strip() if chosen else DEFAULT_MODEL).removeprefix("models/") or DEFAULT_MODEL
         self.timeout = timeout
         self.retries = retries
 
-    def _post(self, prompt: str) -> bytes:
+    def _post(self, prompt: str, schema: dict[str, Any] | None = None) -> bytes:
         body: dict[str, Any] = {"contents": [{"parts": [{"text": prompt}]}]}
         if not self.model.startswith("gemma"):
             # Gemini models honor JSON mime mode; Gemma deployments 500 on any
             # generationConfig, so for those JSON is instructed in the prompt.
             body["generationConfig"] = {"responseMimeType": "application/json"}
+            if schema is not None:
+                # Keep local validation stricter than the provider's supported
+                # JSON Schema subset; prompts retain all the length constraints.
+                def provider_schema(value):
+                    if isinstance(value, dict):
+                        return {k: provider_schema(v) for k, v in value.items()
+                                if k not in ("minLength", "maxLength", "uniqueItems")}
+                    if isinstance(value, list):
+                        return [provider_schema(v) for v in value]
+                    return value
+                body["generationConfig"]["responseJsonSchema"] = provider_schema(schema)
         url = ("https://generativelanguage.googleapis.com/v1beta/models/"
                + parse.quote(self.model, safe="") + ":generateContent")
         last: Exception | None = None
@@ -117,7 +136,7 @@ class GeminiClient:
         """Return (validated payload, model id); raises AITransportError/AIUnavailable."""
         if not self.api_key:
             raise AIUnavailable("GEMINI_API_KEY is not configured")
-        raw = self._post(prompt)
+        raw = self._post(prompt, schema)
         try:
             model_id, text = _extract(json.loads(raw))
             payload = _json_from_text(text)
