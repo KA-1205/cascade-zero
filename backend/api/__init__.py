@@ -8,6 +8,7 @@ every decision, probe and fallback is recorded in the event stream.
 
 from __future__ import annotations
 
+import hashlib
 import hmac
 import json
 import math
@@ -48,7 +49,7 @@ _event_fields = frozenset({"event_id", "run_id", "tick", "kind", "simulated",
                            "payload", "timestamp", "trace_id"})
 
 
-DATA_DIR = Path(__file__).resolve().parent.parent / "data" / "runs"
+DATA_DIR = Path(os.environ.get("CASCADE_DATA_DIR", str(Path(__file__).resolve().parent.parent / "data" / "runs")))
 
 
 def _persist_run_to_disk(run_id: str, stored: dict) -> None:
@@ -205,7 +206,8 @@ def _admin_status() -> dict:
         }
     newest = max(runs, key=lambda run: run.get("created_at", ""), default=None)
     return {
-        "backend": {"state": "ok", "runs_stored": len(runs)},
+        "backend": {"state": "ok", "runs_stored": len(runs),
+                    "runs_persisted": sum(1 for _ in DATA_DIR.glob("*.json"))},
         "runs": {
             "total": len(runs),
             "by_state": dict(Counter(run["state"] for run in runs)),
@@ -267,41 +269,13 @@ def _execute_run(stored: dict, run: dict, request: dict, overlay: dict) -> None:
             run['trace_hash'] = result['trace_hash']
             run["state"] = "completed"
 
-            rca_map = {
-                "db_slowdown": {
-                    "cause": "Database Connection Pool Exhaustion & Worker Starvation",
-                    "rationale": f"Shared DB connections peaked at {run['metrics'].get('peak_db_connections', 55)}, inducing queue backlog of {run['metrics'].get('max_queue_depth', 180)} and {run['metrics'].get('unique_failed', 0)} failed transactions.",
-                    "severity": "critical",
-                    "confidence": 0.98,
-                    "affected": ["database", "orders"],
-                    "mitigation_plan": "Dynamic connection pool expansion and non-critical request shed",
-                },
-                "payments_degradation": {
-                    "cause": "Downstream Payment Gateway Latency Degradation",
-                    "rationale": f"Payment processor latency spiked to {run['metrics'].get('latency_p95', 10)} ticks, locking worker threads and accumulating {run['metrics'].get('max_queue_depth', 115)} queued requests.",
-                    "severity": "high",
-                    "confidence": 0.95,
-                    "affected": ["payments", "gateway"],
-                    "mitigation_plan": "Targeted circuit-breaking, retry backoff damping, and ingress rate-limiting",
-                },
-                "traffic_surge": {
-                    "cause": "Ingress Traffic Surge (5x Baseline Capacity)",
-                    "rationale": f"Offered transactions surged to {run['metrics'].get('unique_offered', 6000)}, exhausting gateway capacity with {run['metrics'].get('max_queue_depth', 200)} queued requests.",
-                    "severity": "high",
-                    "confidence": 0.97,
-                    "affected": ["gateway", "orders", "payments"],
-                    "mitigation_plan": "Edge rate limiting and horizontal replica scale-up",
-                },
-                "telemetry_faults": {
-                    "cause": "Observability Telemetry Sensor Jitter & Dropped Frames",
-                    "rationale": "Telemetry sensors returned delayed and noisy readings; coordinator gated aggressive changes to prevent compound fault.",
-                    "severity": "medium",
-                    "confidence": 0.91,
-                    "affected": ["telemetry", "database"],
-                    "mitigation_plan": "Hold destructive actions pending multi-sensor consensus validation",
-                },
-            }
-            run["diagnosis"] = rca_map.get(run["scenario"], rca_map["db_slowdown"])
+            # Only report diagnoses actually produced by the planner.
+            diagnosis = next((event["payload"].get("ai", {}).get("diagnosis")
+                              for event in reversed(stored["events"])
+                              if event["kind"] == "decision"
+                              and event["payload"].get("ai", {}).get("diagnosis")), None)
+            if diagnosis:
+                run["diagnosis"] = diagnosis
             _persist_run_to_disk(run["id"], stored)
     except Exception:
         # A failed simulation remains inspectable rather than escaping as an
@@ -328,6 +302,15 @@ def _record_operator_decision(stored: dict, plan: dict, approved: bool, reason: 
                     'actor': 'authenticated-operator', 'decided_at': now,
                     'execution': plan.get('execution'), 'measured': False},
     })
+    receipt = stored['events'][-1]
+    # Sign the exact operator receipt and a digest of the preceding trace.
+    receipt['payload']['trace_sha256'] = hashlib.sha256(
+        json.dumps(stored['events'][:-1], sort_keys=True, separators=(',', ':')).encode()).hexdigest()
+    key = os.environ.get('CASCADE_RECEIPT_KEY') or os.environ.get('CASCADE_APPROVAL_TOKEN')
+    if key:
+        canonical = json.dumps(receipt, sort_keys=True, separators=(',', ':')).encode()
+        receipt['payload']['signature'] = hmac.new(key.encode(), canonical, hashlib.sha256).hexdigest()
+        receipt['payload']['signature_algorithm'] = 'HMAC-SHA256'
     _changed.notify_all()
     _persist_run_to_disk(run_id, stored)
 
@@ -597,6 +580,11 @@ class Handler(BaseHTTPRequestHandler):
             if (plan_id, key) in _approval_keys or entry is None:
                 return self._send(409)
             stored, plan, index = entry
+            if stored["run"]["state"] in ("running", "created"):
+                return self._send(409, {"error": "Wait for the run to finish before deciding"})
+            if any(other["status"] in ("approved", "delayed", "executed")
+                   for other in stored["plans"]):
+                return self._send(409, {"error": "This run already has a decision in progress or approved"})
             if plan["status"] != "candidate":
                 return self._send(409)
             if body["approved"] is False:
@@ -644,6 +632,9 @@ class Handler(BaseHTTPRequestHandler):
             plan["execution"] = {"status": "dry-run", "simulated": True,
                                   "measured": False, "replayed": True,
                                   "error": None, "outcome": approval_result}
+            for other in stored["plans"]:
+                if other is not plan and other["status"] == "candidate":
+                    other["status"] = "superseded"
             _record_operator_decision(stored, plan, True, body.get("reason", ""))
             _approval_keys.add((plan_id, key))
         return self._send(202)
@@ -713,28 +704,13 @@ def _seed_demo_runs_if_empty() -> None:
                     }
                     _runs[run["id"]] = stored
                     for plan in stored["plans"]:
-                        _plans[plan["id"]] = (stored, plan, 0)
+                        index = next((i for i, event in enumerate(stored["events"])
+                                      if event["kind"] == "decision" and event["tick"] == plan.get("decision_tick")
+                                      and event["payload"].get("actions") == plan["actions"]), -1)
+                        _plans[plan["id"]] = (stored, plan, index)
             except Exception as e:
                 print(f"Warning: could not load run from {json_path}: {e}")
 
-        # 2. If empty, generate the 3 standard demo runs and persist them
-        if not _runs:
-            for req in [
-                {"seed": 42, "scenario": "db_slowdown", "policy": "coordinated", "purpose": "policy_comparison"},
-                {"seed": 88, "scenario": "payments_degradation", "policy": "coordinated", "purpose": "policy_comparison"},
-                {"seed": 101, "scenario": "traffic_surge", "policy": "coordinated", "purpose": "operator_review"},
-            ]:
-                run_id = f"demo-{req['scenario']}-seed{req['seed']}"
-                overlay = scenario_overlay(req["scenario"])
-                run = {
-                    "id": run_id, "seed": req["seed"], "scenario": req["scenario"],
-                    "policy": req["policy"], "state": "running", "simulated": True,
-                    "measured": False, "created_at": datetime.now(timezone.utc).isoformat(),
-                    "purpose": req["purpose"],
-                }
-                stored = {"run": run, "events": [], "plans": [], "overlay": overlay}
-                _runs[run_id] = stored
-                _execute_run(stored, run, req, overlay)
 
 
 def serve(host: str | None = None, port: int | None = None) -> None:
