@@ -6,7 +6,7 @@ Risk scores are heuristic predictions, not measured outcomes or guarantees.
 from __future__ import annotations
 
 import math
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from itertools import combinations
 
 from backend.actions import AGENT_ACTIONS
@@ -22,6 +22,7 @@ class PlanResult:
     reasons: list[str]
     simulated: bool = True
     measured: bool = False
+    extra: dict = field(default_factory=dict)
 
 
 class Coordinator:
@@ -75,7 +76,13 @@ class Coordinator:
                     reasons.append(f"Excluded {name}: adding it gives risk {candidate.predicted_risk:.2f} > threshold {self.threshold:.2f}; " + " ".join(terms))
                 else:
                     reasons.append(f"Excluded {name}: lexicographic tie-break favors {chosen}; " + " ".join(terms))
-        return PlanResult(list(chosen), assessment.predicted_risk, reasons)
+        return PlanResult(list(chosen), assessment.predicted_risk, reasons, extra={
+            "combinations": [{"actions": list(subset), "predicted_risk": score.predicted_risk,
+                              "safe": score.predicted_risk <= self.threshold,
+                              "selected": subset == chosen,
+                              "reasons": [term.reason for term in score.terms]}
+                             for subset, score in assessments.items()],
+        })
 
 
 def default_coordinator(threshold: float = 0.5,
