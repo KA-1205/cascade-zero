@@ -72,8 +72,8 @@ class FakeResponse:
     def __exit__(self, *args):
         return False
 
-    def read(self):
-        return self._body
+    def read(self, limit=-1):
+        return self._body if limit < 0 else self._body[:limit]
 
 
 def post_spy(monkeypatch, responses, sleeps):
@@ -208,3 +208,10 @@ def test_response_parts_ignore_thoughts_and_join_json_fragments(monkeypatch):
     ]
     post_spy(monkeypatch, [response], [])
     assert GeminiClient(api_key='k').generate_json('p', SCHEMA)[0]['cause'] == 'database saturation'
+
+
+def test_provider_response_has_a_hard_byte_limit(monkeypatch):
+    from backend.ai.client import MAX_RESPONSE_BYTES
+    post_spy(monkeypatch, [wire(text='x'*MAX_RESPONSE_BYTES)], [])
+    with pytest.raises(AITransportError, match='response_too_large'):
+        GeminiClient(api_key='k').generate_json('p', SCHEMA)
