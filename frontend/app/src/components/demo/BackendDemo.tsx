@@ -1,4 +1,5 @@
 'use client';
+import './console.css';
 import { useState } from 'react';
 import Link from 'next/link';
 import { api } from '@/lib/api';
@@ -69,7 +70,8 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
     {loading && <div role="status" className="panel detail-content">Loading backend records…</div>}
     {!run && !loading && !error && <section className="panel detail-content"><h2>No recorded runs</h2><p>Generate an incident to populate the console from the Python backend.</p>{view !== 'incident' && <Link href="/incidents">Open incident cockpit →</Link>}</section>}
     {run && <>
-      {view !== 'incident' && <div className="context-toolbar"><label>Selected run<select aria-label="Selected run" value={run.id} onChange={event => select(event.target.value)}>{runs.map(item => <option key={item.id} value={item.id}>{SCENARIO_LABEL[item.scenario]} · seed {item.seed} · {item.id.slice(0, 8)}</option>)}</select></label><span className="muted">{run.created_at ?? 'Timestamp unavailable'}</span></div>}
+      <div className="model-evidence" role="status" aria-label="Model execution evidence"><strong>{run.policy !== 'ai_coordinated' ? 'Rules policy · no model requested' : decisions.some(e => e.payload.ai?.live) ? 'Model responses verified' : decisions.some(e => e.payload.ai?.fallback_reason) ? 'Rule fallback · no verified model response' : 'Awaiting model evidence'}</strong><span>{run.policy === 'ai_coordinated' ? `${decisions.filter(e => e.payload.ai?.live).length} model decisions · ${decisions.filter(e => e.payload.ai?.fallback_reason).length} fallback decisions` : 'Select AI planner in the incident cockpit to request model decisions.'}</span>{latestDecision?.payload.ai?.fallback_reason && <span>Reason: {latestDecision.payload.ai.fallback_reason}</span>}</div>
+      {view !== 'incident' && <div className="context-toolbar"><label>Selected run<select aria-label="Selected run" value={run.id} onChange={event => select(event.target.value)}>{runs.map(item => <option key={item.id} value={item.id}>{SCENARIO_LABEL[item.scenario]} · seed {item.seed} · {item.id.slice(0, 8)}</option>)}</select></label><span className="muted">{run.created_at ? new Date(run.created_at).toLocaleString() : 'Timestamp unavailable'}</span></div>}
       {(view === 'overview' || view === 'incident') && ribbon}
       {view === 'overview' && <div className="overview-grid console-fill">
         <div className="column-stack"><section className="panel topology-panel"><header className="panel-heading"><h2>Service topology</h2><span>Recorded queue pressure</span></header><ServiceTopology topology={topology} fault="" queues={queues} /></section><AiOverviewPanel event={latestDecision} run={run} /><div className="panel-actions"><Link href={`/incidents/${run.id}`}>Inspect incident →</Link><Link href={`/plans/${run.id}`}>Review plans →</Link></div></div>
