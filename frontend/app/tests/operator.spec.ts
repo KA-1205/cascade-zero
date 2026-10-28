@@ -60,6 +60,13 @@ test('all desktop views contain their page and main scrollers', async ({ page, r
     for (const route of ['/overview','/incidents',`/incidents/${run.id}`,`/plans/${run.id}`,`/experiments?run=${run.id}`,`/audit?run=${run.id}`,'/admin']) {
       await page.goto(route);
       await expect(page.locator('main h1')).toBeVisible();
+      await expect(page.locator('.console-page')).toHaveCSS('display', 'flex');
+      if (route.startsWith('/experiments')) {
+        await expect(page.locator('.master-detail')).toHaveCSS('display', 'grid');
+        await expect(page.locator('.master-row').first()).toHaveCSS('display', 'flex');
+        await expect(page.locator('.master-pane .pane-scroll')).toHaveCSS('overflow-y', 'auto');
+        await expect(page.getByLabel('Model execution evidence')).toContainText('no model requested');
+      }
       await expect(page.getByText('Loading backend records…')).toHaveCount(0);
       const overflow = await page.evaluate(() => {
         return [document.documentElement,document.querySelector('.app-main-content')!,document.querySelector('.console-page')!].map(el=>({x:el.scrollWidth-el.clientWidth,y:el.scrollHeight-el.clientHeight}));
