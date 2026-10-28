@@ -17,8 +17,10 @@ from copy import deepcopy
 from dataclasses import dataclass, field
 from typing import Any, Callable
 
+from backend.ai.client import AITransportError
+from backend.ai.policy import POLICY_VERSION, ROLE_POLICY, MAX_PROBES, MAX_PROBE_TICKS, validate_decision
 from backend.coordinator import Coordinator, default_coordinator
-from backend.simulator import ObservableState, simulate
+from backend.simulator import DEFAULT_CONFIG, ObservableState, simulate
 
 
 DECISION_SCHEMA: dict[str, Any] = {
@@ -171,7 +173,7 @@ class AIPlanner:
         self.fallback = fallback or default_coordinator()
         self.min_interval = min_interval
         self.action_cooldown = action_cooldown
-        self.max_probes = max_probes
+        self.max_probes = max(0, min(MAX_PROBES, max_probes))
         self.history: list[dict] = []
         self.executed: dict[str, int] = {}
         self.declined: dict[str, int] = {}
@@ -240,6 +242,7 @@ class AIPlanner:
                                for a, t in state.action_history],
             "proposals": proposals,
             "known_actions": self.enabled_actions,
+            "service_inventory": list(state.topology.get("services", DEFAULT_CONFIG["topology"])),
         }
 
     def _prompt(self, state: ObservableState, proposals: list[dict],
@@ -250,7 +253,7 @@ class AIPlanner:
             context["note"] = ("Counterfactual sandbox replays you requested are "
                                "included; each ran from tick 0 with that subset "
                                "chosen at every decision point. Decide now.")
-        return (PROMPT_PREAMBLE + json.dumps(DECISION_SCHEMA, sort_keys=True)
+        return (ROLE_POLICY + "\n" + PROMPT_PREAMBLE + json.dumps(DECISION_SCHEMA, sort_keys=True)
                 + "\nInput: " + json.dumps(context, sort_keys=True,
                                            default=str))
 
@@ -262,7 +265,7 @@ class AIPlanner:
     def _run_probes(self, state: ObservableState,
                     requested: list[list[str]]) -> list[dict]:
         offered = set(self.enabled_actions)
-        horizon = min(110, max(40, state.tick + 25))
+        horizon = min(MAX_PROBE_TICKS, max(40, state.tick + 25))
         outcomes, seen = [], set()
         for subset in requested[:self.max_probes]:
             cleaned = sorted({a for a in subset if a in offered})
@@ -281,7 +284,7 @@ class AIPlanner:
         fresh = self._fresh(proposals, state.tick)
 
         base_extra: dict[str, Any] = {"ai": {
-            "live": False, "model": None, "fallback_reason": None,
+            "live": False, "model": None, "fallback_reason": None, "policy_version": POLICY_VERSION,
             "calls": self.calls, "live_decisions": self.live_decisions,
             "first_failure_reason": self.first_failure_reason, "circuit_open": self.circuit_open,
             "checks": [c.to_dict() for c in self.checks],
@@ -289,6 +292,8 @@ class AIPlanner:
         if finalized:
             base_extra["ai"]["checks_evaluated"] = [c.to_dict() for c in finalized]
         base_extra.update(self.fallback.plan(state, fresh).extra)
+        if "telemetry_stale" in state.incident_flags:
+            return self._fallback_decision(state, [], "stale_telemetry", base_extra)
         if not fresh:
             return AIDecision([], 0.0,
                               ["No new recovery action to consider."], base_extra)
@@ -319,8 +324,17 @@ class AIPlanner:
                 base_extra["ai"]["circuit_open"] = True
             return self._fallback_decision(state, fresh, reason, base_extra)
 
-        try:
+        def model_response(prompt):
             payload, model_id = self.client.generate_json(prompt, DECISION_SCHEMA)
+            validate_decision(payload, DECISION_SCHEMA, {p["action"] for p in fresh},
+                              set(self.enabled_actions),
+                              set(state.topology.get("services", DEFAULT_CONFIG["topology"])))
+            if not isinstance(model_id, str) or not model_id.strip():
+                raise AITransportError("invalid_model_identity")
+            return payload, model_id
+
+        try:
+            payload, model_id = model_response(prompt)
         except Exception as exc:  # noqa: BLE001 - every failure becomes a labeled fallback
             return provider_failure(exc)
         self.consecutive_failures = 0
@@ -338,18 +352,16 @@ class AIPlanner:
             if outcomes:
                 prompt = self._prompt(state, fresh, outcomes)
                 try:
-                    payload, model_id = self.client.generate_json(prompt,
-                                                                  DECISION_SCHEMA)
+                    payload, model_id = model_response(prompt)
+                    if payload.get("need_probes"):
+                        raise AITransportError("probe_budget_exhausted")
                 except Exception as exc:  # noqa: BLE001
                     return provider_failure(exc)
                 self.consecutive_failures = 0
         latency_ms = int((time.monotonic() - started) * 1000)
 
         allowed = {p["action"] for p in fresh}
-        selected = [a for a in payload["selected_actions"] if a in allowed]
-        if len(selected) != len(payload["selected_actions"]):
-            return self._fallback_decision(state, fresh, "selection_outside_proposals",
-                                           base_extra)
+        selected = list(payload["selected_actions"])
 
         model_selected = list(selected)
         guarded = self.fallback.plan(state, [p for p in fresh if p["action"] in selected])
