@@ -38,6 +38,7 @@ _plans: dict[str, dict] = {}
 _approval_keys: set[tuple[str, str]] = set()
 _lock = threading.RLock()
 _changed = threading.Condition(_lock)
+LIVE_TICK_SECONDS = max(0.05, min(5.0, float(os.environ.get("CASCADE_LIVE_TICK_SECONDS", "1"))))
 MAX_RUNS = 100
 MAX_ACTIVE_RUNS = 8
 MAX_RUNS_PER_MINUTE = 60
@@ -85,6 +86,7 @@ def _valid_run_request(body: object) -> bool:
             and isinstance(body.get("scenario"), str) and body["scenario"] in SCENARIOS
             and body.get("policy") in ("none", "independent", "guardrails",
                                        "coordinated", "ai_coordinated")
+            and type(body.get("live", False)) is bool
             and body.get("purpose", "policy_comparison") in
             ("policy_comparison", "operator_review"))
 
@@ -253,6 +255,8 @@ def _execute_run(stored: dict, run: dict, request: dict, overlay: dict) -> None:
                         'simulated': True, 'measured': False, 'decision_tick': event['tick'],
                         'purpose': request.get('purpose', 'policy_comparison'),
                     }
+                    if 'combinations' in decision:
+                        candidate['combinations'] = decision['combinations']
                     if 'ai' in decision:
                         candidate['ai'] = decision['ai']
                     if any(p['status'] in ('approved', 'executed') for p in stored['plans']):
@@ -260,6 +264,10 @@ def _execute_run(stored: dict, run: dict, request: dict, overlay: dict) -> None:
                     stored['plans'].append(candidate)
                     _plans[candidate['id']] = (stored, candidate, index)
                 _changed.notify_all()
+            # Pace only explicitly requested interactive runs, outside the lock.
+            # Batch comparisons and backtests retain their deterministic fast path.
+            if request.get('live') and event['kind'] == 'metric':
+                time.sleep(LIVE_TICK_SECONDS)
 
         result = simulate(request['seed'], request['policy'], overlay, plan=plan,
                           apply_actions=request.get('purpose') != 'operator_review',
@@ -526,6 +534,8 @@ class Handler(BaseHTTPRequestHandler):
                "purpose": request.get("purpose", "policy_comparison"),
                "measured": False,
                "created_at": datetime.now(timezone.utc).isoformat(timespec="microseconds")}
+        if request.get("live"):
+            run["tick_interval_ms"] = int(LIVE_TICK_SECONDS * 1000)
         overlay = scenario_overlay(request["scenario"])
         stored = {"run": run, "events": [], "plans": [], "overlay": overlay}
         with _lock:
@@ -548,7 +558,7 @@ class Handler(BaseHTTPRequestHandler):
             _run_starts.append(now)
             run['state'] = 'running'
             _runs[run_id] = stored
-        if request["policy"] == "ai_coordinated":
+        if request["policy"] == "ai_coordinated" or request.get("live"):
             # Live model calls take seconds each: execute in the background so
             # the response returns immediately and events stream as they land.
             worker = threading.Thread(target=_execute_run,
