@@ -50,16 +50,28 @@ export function useBackendRun(runId?: string) {
     let cancelled = false;
     let timer: ReturnType<typeof setInterval> | undefined;
     const id = run.id;
+    let syncing = false;
+    let pending = false;
     const sync = async () => {
+      if (cancelled) return;
+      if (syncing) { pending = true; return; }
+      syncing = true;
       try {
         const [current, candidates, history] = await Promise.all([api.getRun(id), api.listPlans(id), api.listRuns()]);
         if (cancelled) return;
         setRun(current); setPlans(candidates); setRuns(history);
         if (current.state !== 'running') clearInterval(timer);
       } catch (reason) { if (!cancelled) setError(reason instanceof Error ? reason.message : 'Refresh failed'); }
+      finally {
+        syncing = false;
+        if (pending && !cancelled) { pending = false; void sync(); }
+      }
     };
     const stop = api.subscribeToEvents(id, event => {
-      if (!cancelled) setEvents(prior => prior.some(item => item.event_id === event.event_id) ? prior : [...prior, event]);
+      if (!cancelled) {
+        setEvents(prior => prior.some(item => item.event_id === event.event_id) ? prior : [...prior, event]);
+        if (event.kind === 'decision') void sync();
+      }
     }, reason => { if (!cancelled) setError(reason.message); }, status => {
       if (!cancelled) {
         setStreamStatus(status);
