@@ -15,6 +15,7 @@ import backend.api as backend
 
 @pytest.fixture()
 def api(monkeypatch, tmp_path):
+    monkeypatch.setattr(backend, 'LIVE_TICK_SECONDS', .05)
     monkeypatch.setenv('CASCADE_APPROVAL_TOKEN', 'console-test-token')
     monkeypatch.setenv('CASCADE_RECEIPT_KEY', 'isolated-receipt-key')
     monkeypatch.delenv('GEMINI_API_KEY', raising=False)
@@ -177,3 +178,30 @@ def test_live_recommendations_can_be_decided_and_future_plans_stay_locked(api, m
         time.sleep(.01)
     _, final = request(api, f"/v1/runs/{run['id']}/plans")
     assert all(p['status'] == 'superseded' for p in final if p['id'] != latest['id'])
+
+
+def test_payments_live_run_returns_before_completion_and_records_subsets(api):
+    import time
+    start = time.monotonic()
+    status, run = request(api, '/v1/runs', {'seed':42, 'scenario':'payments_degradation', 'policy':'coordinated', 'purpose':'operator_review', 'live':True})
+    assert status == 201 and run['state'] == 'running'
+    assert run['tick_interval_ms'] == 50
+    assert time.monotonic() - start < 2
+    deadline = time.monotonic() + 25
+    counts = []
+    while True:
+        _, current = request(api, f"/v1/runs/{run['id']}")
+        _, plans = request(api, f"/v1/runs/{run['id']}/plans")
+        counts.append(len(plans))
+        if current['state'] != 'running':
+            break
+        assert time.monotonic() < deadline
+        time.sleep(.3)
+    assert len(set(counts)) > 2
+    assert current['state'] == 'completed'
+    assert any(len(p['combinations']) > 1 for p in plans)
+    for p in plans:
+        subsets = p['combinations']
+        assert sum(c['selected'] for c in subsets) == 1
+        assert next(c['actions'] for c in subsets if c['selected']) == sorted(p['actions'])
+        assert all('add_replicas' not in c['actions'] for c in subsets)
