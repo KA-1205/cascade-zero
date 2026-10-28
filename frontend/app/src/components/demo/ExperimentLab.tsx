@@ -8,6 +8,8 @@ import { BacktestVerdict } from './PlansConsole';
 export function ExperimentLab({ runs, run, plans, planId, select, refresh }: {
   runs: Run[]; run: Run; plans: Plan[]; planId?: string; select: (id: string) => void; refresh: () => void;
 }) {
+  const [search, setSearch] = useState('');
+  const visibleRuns = runs.filter(item => `${SCENARIO_LABEL[item.scenario]} ${item.seed} ${POLICY_LABEL[item.policy]}`.toLowerCase().includes(search.toLowerCase()));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [result, setResult] = useState<BacktestResult | null>(null);
@@ -42,7 +44,8 @@ export function ExperimentLab({ runs, run, plans, planId, select, refresh }: {
   const fmt = (value?: number) => value === undefined ? '—' : value.toLocaleString();
   return <div className="master-detail">
     <section className="panel master-pane"><header className="panel-heading"><h2>Experiment history</h2><span>{runs.length} runs</span></header>
-      <div className="pane-scroll">{runs.map(item => <button className={`master-row ${item.id === run.id ? 'is-selected' : ''}`} key={item.id} aria-pressed={item.id === run.id} onClick={() => select(item.id)}>
+      <input className="history-search" aria-label="Filter experiment history" placeholder="Search scenario, seed or policy" value={search} onChange={event => setSearch(event.target.value)} />
+      <div className="pane-scroll">{visibleRuns.map(item => <button className={`master-row ${item.id === run.id ? 'is-selected' : ''}`} key={item.id} aria-pressed={item.id === run.id} onClick={() => select(item.id)}>
         <strong>{SCENARIO_LABEL[item.scenario]}</strong><span>Seed {item.seed} · {POLICY_LABEL[item.policy]}</span><small>{item.state} · {item.purpose?.replaceAll('_', ' ') ?? 'Purpose unavailable'}</small>
       </button>)}</div>
     </section>
