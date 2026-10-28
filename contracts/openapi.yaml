@@ -7,6 +7,14 @@ security: [{bearerAuth: []}]
 servers:
   - url: http://localhost:8000
 paths:
+  /v1/ai/check:
+    post:
+      operationId: checkAIProvider
+      description: Authenticated minimal model request verifying configured credentials, model and structured response parsing. Returns sanitized failure codes.
+      responses:
+        '200': {description: Verified provider response, content: {application/json: {schema: {type: object}}}}
+        '403': {description: Forbidden}
+        '503': {description: Provider unavailable or response invalid, content: {application/json: {schema: {type: object}}}}
   /v1/evaluate:
     post:
       operationId: evaluateProposals
