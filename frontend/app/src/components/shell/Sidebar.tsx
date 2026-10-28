@@ -326,7 +326,7 @@ export function Sidebar({ open, onToggle }: SidebarProps) {
                   flexShrink: 0,
                 }}
               />
-              Cascade Zero v0.1.0
+              <Link href="/" aria-label="Cascade Zero project home">Cascade Zero v0.1.0 ↗</Link>
             </div>
           )}
 

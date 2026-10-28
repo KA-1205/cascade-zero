@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useState, Suspense } from 'react';
+import { usePathname } from 'next/navigation';
 import { Sidebar } from './Sidebar';
 import { Header } from './Header';
 import { SimBanner } from './SimBanner';
@@ -26,6 +27,7 @@ function SidebarFallback({ open }: { open: boolean }) {
 
 export function AppShell({ children }: AppShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const pathname = usePathname();
 
   useEffect(() => {
     const syncForViewport = () => setSidebarOpen(window.innerWidth > 760);
@@ -33,6 +35,8 @@ export function AppShell({ children }: AppShellProps) {
     window.addEventListener('resize', syncForViewport);
     return () => window.removeEventListener('resize', syncForViewport);
   }, []);
+
+  if (pathname === '/') return <>{children}</>; // public landing page renders without the operator shell
 
   return (
     <div className="app-frame">
