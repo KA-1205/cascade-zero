@@ -2,6 +2,7 @@
 import './console.css';
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
+import { providerFailureHelp } from '@/lib/provider-status';
 import { api } from '@/lib/api';
 import { SCENARIO_LABEL, POLICY_LABEL } from '@/lib/labels';
 import type { AdminStatus, Run, RunScenario } from '@/types/api';
@@ -10,6 +11,17 @@ export function AdminDashboard() {
   const [runs, setRuns] = useState<Run[]>([]);
   const [error, setError] = useState('');
   const [busy, setBusy] = useState(false);
+  const [checking, setChecking] = useState(false);
+  const [checkResult, setCheckResult] = useState('');
+  async function checkProvider() {
+    setChecking(true); setCheckResult('');
+    try {
+      const response = await fetch('/v1/ai/check', {method:'POST', headers:{'Content-Type':'application/json'}, body:'{}'});
+      const result = await response.json();
+      setCheckResult(result.ok ? `Verified model response: ${result.model}` : `Provider check failed: ${result.reason ?? result.error ?? response.status} · ${result.model ?? 'Model unavailable'} · ${providerFailureHelp(result.reason ?? '')}`);
+    } catch { setCheckResult('Provider check unavailable. Check backend connectivity.'); }
+    finally { setChecking(false); }
+  }
   const [scenario, setScenario] = useState<RunScenario>('db_slowdown');
   const load = useCallback(async () => {
     try { const [next, history] = await Promise.all([api.getAdminStatus(), api.listRuns()]); setStatus(next); setRuns(history); setError(''); }
@@ -27,6 +39,7 @@ export function AdminDashboard() {
     {status && <><section className="metric-ribbon"><div><span>Backend</span><strong>{status.backend.state}</strong><small>Python API</small></div><div><span>Runs persisted</span><strong>{status.backend.runs_persisted ?? '—'}</strong><small>{status.runs.total} in memory</small></div><div><span>Live model decisions</span><strong>{status.ai_engine.live_decisions}</strong><small>{status.ai_engine.model}</small></div><div><span>Fallback decisions</span><strong>{status.ai_engine.fallback_decisions}</strong><small>Recorded by the coordinator</small></div></section>
     <div className="master-detail admin-grid"><section className="panel detail-pane"><header className="panel-heading"><h2>Engine & scenario inventory</h2><span>{Object.keys(status.scenarios).length} scenarios</span></header><div className="pane-scroll detail-content">
     <dl className="receipt-fields"><dt>Model</dt><dd>{status.ai_engine.model}</dd><dt>Provider credentials</dt><dd>{status.ai_engine.provider_configured ? 'Configured; availability is shown by decision outcomes' : 'Not configured; deterministic fallback'}</dd><dt>Running</dt><dd>{status.runs.by_state.running ?? 0}</dd><dt>Completed</dt><dd>{status.runs.by_state.completed ?? 0}</dd></dl>
+    <button className="backtest-lab-btn" onClick={checkProvider} disabled={checking}>{checking ? 'Checking provider…' : 'Test AI connection'}</button><p role="status">{checkResult}</p>
     <h3>Fallback reasons</h3>{Object.entries(status.ai_engine.top_fallback_reasons).map(([reason,count]) => <p key={reason}>{reason} <strong>{count}</strong></p>)}{!Object.keys(status.ai_engine.top_fallback_reasons).length && <p>No fallback reasons recorded.</p>}
     <h3>Available scenarios</h3>{Object.entries(status.scenarios).map(([name,config]) => <div className="inventory-row" key={name}><strong>{SCENARIO_LABEL[name as RunScenario] ?? name}</strong><p>{config.actions_available.join(' · ')}</p></div>)}</div>
     <footer className="panel-actions"><label>Scenario<select value={scenario} onChange={e => setScenario(e.target.value as RunScenario)}>{Object.keys(status.scenarios).map(name => <option key={name} value={name}>{SCENARIO_LABEL[name as RunScenario] ?? name}</option>)}</select></label><button onClick={start} disabled={busy}>{busy ? 'Starting…' : 'Start background simulation'}</button></footer></section>
