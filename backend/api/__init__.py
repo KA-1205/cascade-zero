@@ -255,6 +255,8 @@ def _execute_run(stored: dict, run: dict, request: dict, overlay: dict) -> None:
                     }
                     if 'ai' in decision:
                         candidate['ai'] = decision['ai']
+                    if any(p['status'] in ('approved', 'executed') for p in stored['plans']):
+                        candidate['status'] = 'superseded'
                     stored['plans'].append(candidate)
                     _plans[candidate['id']] = (stored, candidate, index)
                 _changed.notify_all()
@@ -580,8 +582,9 @@ class Handler(BaseHTTPRequestHandler):
             if (plan_id, key) in _approval_keys or entry is None:
                 return self._send(409)
             stored, plan, index = entry
-            if stored["run"]["state"] in ("running", "created"):
-                return self._send(409, {"error": "Wait for the run to finish before deciding"})
+            latest_tick = max((p["decision_tick"] for p in stored["plans"] if p["actions"]), default=None)
+            if not plan["actions"] or plan["decision_tick"] != latest_tick:
+                return self._send(409, {"error": "Only the latest recovery recommendation can be approved or rejected; use what-if simulation for older ticks"})
             if any(other["status"] in ("approved", "delayed", "executed")
                    for other in stored["plans"]):
                 return self._send(409, {"error": "This run already has a decision in progress or approved"})

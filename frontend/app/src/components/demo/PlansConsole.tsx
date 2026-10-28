@@ -17,9 +17,10 @@ export function PlansConsole({ plans, run, refresh }: { plans: Plan[]; run: Run;
   const candidatePlans = plans.filter(p => p.actions.length).sort((a,b) => (b.decision_tick ?? 0) - (a.decision_tick ?? 0));
   const selectedPlan = candidatePlans.find(p => p.id === selectedPlanId) ?? candidatePlans[0];
   const maxPlanTick = candidatePlans[0]?.decision_tick;
-  const approvedPlan = plans.find(p => p.status === 'approved' || p.status === 'executed');
+  const isLatestSelected = selectedPlan?.decision_tick === maxPlanTick;
+  const approvedPlan = plans.find(p => p.status === 'approved' || p.status === 'executed' || p.status === 'delayed');
   async function decide(plan: Plan, approved: boolean) {
-    if (busy || approvedPlan || plan.status !== 'candidate') return;
+    if (busy || approvedPlan || plan.status !== 'candidate' || plan.decision_tick !== maxPlanTick) return;
     setBusy(true); setError('');
     try { await api.decidePlan(plan.id, approved, operatorNotes[plan.id]?.trim() ?? ''); refresh(); }
     catch (reason) { setError(reason instanceof Error ? reason.message : 'Decision failed'); }
@@ -53,7 +54,7 @@ export function PlansConsole({ plans, run, refresh }: { plans: Plan[]; run: Run;
                       <button
                         key={plan.id}
                         type="button"
-                        onClick={() => setSelectedPlanId(plan.id)}
+                        onClick={() => setSelectedPlanId(isLatest ? '' : plan.id)}
                         aria-pressed={isSelected}
                         className={`plan-item-row ${isSelected ? 'is-selected' : ''} ${isLatest ? 'is-latest' : ''}`}
                       >
@@ -134,7 +135,7 @@ export function PlansConsole({ plans, run, refresh }: { plans: Plan[]; run: Run;
                             {approvedPlan ? `Tick ${approvedPlan.decision_tick} was approved. Alternative candidates are locked.` : `This plan is ${selectedPlan.status}. No further decision is available.`}
                           </p>
                         </div>
-                      ) : (
+                      ) : !isLatestSelected ? <p className="muted">Historical tick · what-if simulation only. Select the latest recommendation to approve or reject.</p> : (
                         <div className="approval-form">
                           <input
                             type="text"
@@ -146,7 +147,7 @@ export function PlansConsole({ plans, run, refresh }: { plans: Plan[]; run: Run;
                           <div className="approval-actions-row">
                             <button
                               type="button"
-                              disabled={busy || run.state === 'running'}
+                              disabled={busy}
                               onClick={() => approve(selectedPlan)}
                               className="approve-primary-btn"
                             >
@@ -154,12 +155,16 @@ export function PlansConsole({ plans, run, refresh }: { plans: Plan[]; run: Run;
                             </button>
                             <button
                               type="button"
-                              disabled={busy || run.state === 'running'}
+                              disabled={busy}
                               onClick={() => reject(selectedPlan)}
                               className="reject-btn"
                             >
                               Reject
                             </button>
+                          </div>
+                        </div>
+                      )}
+                      <div className="approval-actions-row">
                             <button
                               type="button"
                               disabled={busy || backtesting === selectedPlan.id}
@@ -171,9 +176,8 @@ export function PlansConsole({ plans, run, refresh }: { plans: Plan[]; run: Run;
                             <Link href={`/experiments?run=${encodeURIComponent(run.id)}&plan=${encodeURIComponent(selectedPlan.id)}`} className="lab-link">
                               Open in Experiment Lab →
                             </Link>
-                          </div>
-                        </div>
-                      )}
+
+                      </div>
                     </div>
                   </div>
                 ) : (

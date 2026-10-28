@@ -141,7 +141,7 @@ def test_coordinated_decision_plans_and_approval(api, monkeypatch):
     for plan, decision in zip(plans, decisions):
         assert (plan["actions"], plan["predicted_risk"], plan["reasons"]) == (
             decision["actions"], decision["predicted_risk"], decision["reasons"])
-    plan = next(p for p in plans if p["actions"])
+    plan = next(p for p in reversed(plans) if p["actions"])
     path = f"/v1/plans/{plan['id']}/approval"
     monkeypatch.delenv("CASCADE_APPROVAL_TOKEN", raising=False)
     body = {"approved": True, "reason": "sandbox test"}
@@ -177,7 +177,7 @@ def test_approval_with_gated_executor_records_execution(api, monkeypatch):
     monkeypatch.setenv("CASCADE_APPROVAL_TOKEN", "local-token")
     run = create(api, seed=17)
     _, _, raw = request(api, f"/v1/runs/{run['id']}/plans")
-    plan = next(p for p in json.loads(raw) if p["actions"])
+    plan = next(p for p in reversed(json.loads(raw)) if p["actions"])
     status, _, _ = request(api, f"/v1/plans/{plan['id']}/approval", "POST",
                            {"approved": True},
                            {"Authorization": "Bearer local-token",
