@@ -17,6 +17,7 @@ import jsonschema
 # gemma-4 endpoints reject any generationConfig with HTTP 500 and emit long
 # markdown reasoning; see _post for the adaptive handling.
 DEFAULT_MODEL = "gemini-3.8-flash"
+MAX_RESPONSE_BYTES = 256 * 1024
 
 
 class AIUnavailable(RuntimeError):
@@ -113,7 +114,10 @@ class GeminiClient:
             })
             try:
                 with request.urlopen(req, timeout=self.timeout) as response:
-                    return response.read()
+                    raw = response.read(MAX_RESPONSE_BYTES + 1)
+                    if len(raw) > MAX_RESPONSE_BYTES:
+                        raise AITransportError("response_too_large")
+                    return raw
             except error.HTTPError as exc:
                 last = AITransportError(f"http_status:{exc.code}")
                 if exc.code not in (500, 503):

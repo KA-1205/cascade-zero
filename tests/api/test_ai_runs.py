@@ -116,6 +116,8 @@ def test_admin_status_aggregates_the_project(api):
     assert "ai_coordinated" in status["runs"]["by_policy"]
     assert status["transactions"]["offered"] > 0
     assert status["ai_engine"]["model"]
+    assert status["ai_engine"]["role"] == "incident_recovery_advisor"
+    assert status["ai_engine"]["policy_version"] == "cz-runtime-v1"
     assert status["ai_engine"]["provider_configured"] is False  # fixture deletes the key
     assert status["ai_engine"]["fallback_decisions"] >= 1
     assert set(status["scenarios"]["payments_degradation"]["actions_available"]) == {

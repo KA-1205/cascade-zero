@@ -27,6 +27,7 @@ from uuid import uuid4
 
 from backend.actions import ACTION_AGENTS
 from backend.ai import AIPlanner, GeminiClient
+from backend.ai.policy import POLICY_VERSION
 from backend.replay import replay_candidate
 from backend.coordinator import default_coordinator
 from backend.simulator import (DEFAULT_CONFIG, SCENARIOS, ObservableState,
@@ -217,6 +218,8 @@ def _admin_status() -> dict:
         },
         "transactions": totals,
         "ai_engine": {
+            "policy_version": POLICY_VERSION,
+            "role": "incident_recovery_advisor",
             "model": GeminiClient().model,
             "provider_configured": bool(os.environ.get("GEMINI_API_KEY")),
             "live_decisions": ai_live,

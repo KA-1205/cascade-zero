@@ -2,6 +2,10 @@
 
 Cascade Zero is a safety firewall and constraint coordinator for autonomous incident-recovery systems. When multi-agent systems attempt concurrent remediation during an outage, uncoordinated actions (such as simultaneous pod restarts, aggressive retry storms, and capacity scaling) can amplify cascading failures. Cascade Zero intercepts proposed recovery actions, calculates compound joint risks, enforces safety invariants, and gates execution plans.
 
+## Runtime AI role and safety policy
+
+The model inside Cascade Zero is an advisor, not an operator. [AI_RUNTIME_POLICY.md](docs/AI_RUNTIME_POLICY.md) defines its role, forbidden capabilities, deterministic validation, bounded probes, fallback behavior and research basis. The versioned rules in [backend/ai/policy.py](backend/ai/policy.py) are included in model requests and enforced at the planner boundary. No failproof-model guarantee is claimed.
+
 ## Architecture
 
 ```
