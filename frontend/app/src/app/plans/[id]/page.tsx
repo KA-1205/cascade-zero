@@ -8,5 +8,5 @@ export const metadata: Metadata = { title: 'Recovery Planning' };
 // `params.id`. `params` is a Promise and must be unwrapped").
 export default async function Page({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  return <BackendDemo view="plans" runId={id} />;
+  return <BackendDemo key={id} view="plans" runId={id} />;
 }
