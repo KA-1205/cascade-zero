@@ -140,6 +140,7 @@ export interface ProposalPayload {
 }
 
 export interface DecisionPayload {
+  combinations?: Plan["combinations"];
   actions: string[];
   predicted_risk: number;
   reasons: string[];

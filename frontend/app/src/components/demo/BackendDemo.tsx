@@ -10,6 +10,7 @@ import { ServiceTopology } from './ServiceTopology';
 import { IncidentTelemetryChart } from './IncidentTelemetryChart';
 import { AiOverviewPanel } from './AiOverviewPanel';
 import { PlansConsole } from './PlansConsole';
+import { CombinationExplorer } from './CombinationExplorer';
 import { ExperimentLab } from './ExperimentLab';
 import { EventAudit } from './EventAudit';
 
@@ -29,6 +30,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
   const [busy, setBusy] = useState(false);
   const [actionError, setActionError] = useState('');
   const [historySearch, setHistorySearch] = useState('');
+  const [incidentPane, setIncidentPane] = useState<'combinations' | 'events'>('combinations');
   async function start(nextScenario = scenario) {
     if (busy) return;
     setBusy(true); setActionError('');
@@ -81,7 +83,7 @@ export function BackendDemo({ view, runId, planId }: { view: View; runId?: strin
       {view === 'incident' && <div className="incident-grid console-fill">
         <section className="panel master-pane incident-history"><header className="panel-heading"><h2>Incidents</h2><span>{runs.length}</span></header><input className="history-search" aria-label="Filter incident history" placeholder="Search seed or scenario" value={historySearch} onChange={e => setHistorySearch(e.target.value)} /><div className="pane-scroll">{filteredRuns.map(item => <button key={item.id} aria-pressed={item.id === run.id} className={`master-row ${item.id === run.id ? 'is-selected' : ''}`} onClick={() => select(item.id)}><strong>{SCENARIO_LABEL[item.scenario]}</strong><span>Seed {item.seed} · {POLICY_LABEL[item.policy]}</span><small>{item.state} · {fmt(item.metrics?.unique_failed)} failed</small></button>)}</div></section>
         <div className="column-stack incident-telemetry"><section className="panel telemetry-panel detail-content"><h2>Telemetry timeline</h2><IncidentTelemetryChart events={events} /><div className="sparkline-grid"><Sparkline label="Database load" values={metrics.map(e => e.payload.db_load)} /><Sparkline label="Latency / ticks" values={metrics.map(e => e.payload.latency)} /><Sparkline label="Queue depth" values={metrics.map(e => e.payload.queue_depth)} /></div></section><AiOverviewPanel event={latestDecision} run={run} />{recentChecks.length > 0 && <section className="panel detail-content"><h2>Health invariants</h2>{recentChecks.map((check, i) => <p key={i}>{check.status} · {check.description} · observed {check.observed ?? 'pending'}</p>)}</section>}</div>
-        <section className="panel detail-pane"><header className="panel-heading"><h2>Event ticker</h2><button aria-pressed={live} onClick={() => setLive(!live)}>{live ? 'Pause live stream' : 'Resume live stream'}</button></header><p className="stream-status" role="status">{live ? `SSE · ${streamStatus === 'closed' ? 'Replay complete' : streamStatus}` : 'Stream paused'} · Tick {metrics.at(-1)?.tick ?? '—'}{run.tick_interval_ms ? ` · ${run.tick_interval_ms / 1000}s/tick · simulated` : ' · simulated'}</p><div className="pane-scroll detail-content"><EventTicker events={events} /></div><footer className="panel-actions"><Link href={`/plans/${run.id}`}>Review plans →</Link></footer></section>
+        <section className="panel detail-pane"><header className="panel-heading"><h2>Decision analysis</h2><button aria-pressed={live} onClick={() => setLive(!live)}>{live ? 'Pause live stream' : 'Resume live stream'}</button></header><p className="stream-status" role="status">{live ? `SSE · ${streamStatus === 'closed' ? 'Replay complete' : streamStatus}` : 'Stream paused'} · Tick {metrics.at(-1)?.tick ?? '—'}{run.tick_interval_ms ? ` · ${run.tick_interval_ms / 1000}s/tick · simulated` : ' · simulated'}</p><div className="incident-pane-tabs" role="group" aria-label="Decision analysis views"><button aria-pressed={incidentPane === 'combinations'} onClick={() => setIncidentPane('combinations')}>Action combinations</button><button aria-pressed={incidentPane === 'events'} onClick={() => setIncidentPane('events')}>Event ticker</button></div>{incidentPane === 'combinations' ? <CombinationExplorer key={run.id} decisions={decisions} policy={run.policy} currentTick={metrics.at(-1)?.tick} /> : <div className="pane-scroll detail-content"><EventTicker events={events} /></div>}<footer className="panel-actions"><Link href={`/plans/${run.id}`}>Review plans →</Link></footer></section>
       </div>}
       {view === 'plans' && <PlansConsole plans={plans} run={run} refresh={refresh} />}
       {view === 'experiments' && <ExperimentLab runs={runs} run={run} plans={plans} planId={planId} select={select} refresh={refresh} />}

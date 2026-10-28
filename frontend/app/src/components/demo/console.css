@@ -104,3 +104,22 @@ html, body { height: 100%; overflow: hidden; }
 .model-evidence { display: flex; align-items: center; flex-wrap: wrap; gap: 8px 18px; padding: 9px 12px; border: 1px solid var(--border); border-left: 3px solid var(--accent); background: var(--bg-surface); border-radius: 6px; font-size: 11px; }
 .model-evidence span { color: var(--text-secondary); }
 .context-toolbar select { max-width: min(600px, 45vw); text-overflow: ellipsis; }
+
+.incident-pane-tabs { display: flex; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--border); flex-shrink: 0; }
+.incident-pane-tabs button { border: 1px solid var(--border); border-radius: 5px; padding: 7px 10px; font-size: 11px; background: var(--bg-surface); }
+.incident-pane-tabs button[aria-pressed="true"] { background: var(--accent-muted); border-color: var(--accent); color: var(--accent); }
+.combination-explorer { display: flex; flex-direction: column; flex: 1; min-height: 0; overflow: hidden; }
+.combination-context { padding: 10px 12px; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px; font-size: 10px; color: var(--text-secondary); }
+.combination-context label { display: flex; align-items: center; gap: 6px; }
+.combination-context select { max-width: 190px; padding: 5px; border: 1px solid var(--border); border-radius: 4px; }
+.combination-summary { padding: 10px 12px; border-bottom: 1px solid var(--border); font-size: 11px; }
+.combination-summary > span { display: block; margin-top: 5px; color: var(--text-secondary); }
+.combination-summary p { margin: 8px 0; }
+.combination-summary small { font-size: 10px; color: var(--text-muted); }
+.combination-table th:first-child { width: 57%; }
+.combination-table td { font-size: 11px; padding: 10px; }
+.combination-table th { position: sticky; top: 0; background: var(--bg-surface); padding: 10px; }
+.combination-table details { font-size: 10px; color: var(--text-secondary); margin-top: 6px; }
+.combination-table summary { cursor: pointer; }
+.combination-table details p { margin-top: 5px; line-height: 1.5; }
+.combination-selected { background: var(--accent-muted); font-weight: 600; }
