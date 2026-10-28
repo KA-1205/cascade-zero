@@ -58,7 +58,7 @@ def test_approval_has_one_shot_replay_and_audit_receipt(api):
     _, run = call(api, '/v1/runs', {'seed': 137, 'scenario': 'db_slowdown',
                                   'policy': 'coordinated', 'purpose': 'operator_review'})
     _, plans = call(api, f"/v1/runs/{run['id']}/plans")
-    plan = next(p for p in plans if p['actions'])
+    plan = next(p for p in reversed(plans) if p['actions'])
     assert call(api, f"/v1/plans/{plan['id']}/approval", {'approved': True, 'reason': 'reviewed'})[0] == 202
     _, plans = call(api, f"/v1/runs/{run['id']}/plans")
     approved = next(p for p in plans if p['id'] == plan['id'])
