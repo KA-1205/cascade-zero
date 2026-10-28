@@ -109,6 +109,10 @@ export function PlansConsole({ plans, run, refresh }: { plans: Plan[]; run: Run;
                       </div>
                     </div>
 
+                    <section className="combination-evidence"><h3>Evaluated action combinations</h3>
+                      {selectedPlan.combinations ? <><p className="muted">{selectedPlan.combinations.length} subsets scored at this tick. These are joint-risk estimates, not measured outcomes or action-order permutations.</p>
+                      <table className="data-table" aria-label="Evaluated action combinations"><thead><tr><th>Combination</th><th>Joint risk</th><th>Assessment</th></tr></thead><tbody>{selectedPlan.combinations.map((item, index) => <tr key={index}><td>{actionListLabel(item.actions)}<small>{item.reasons.join('; ') || 'No action risk'}</small></td><td>{item.predicted_risk}</td><td>{item.selected ? 'Selected' : item.safe ? 'Eligible' : 'Blocked'}</td></tr>)}</tbody></table></> : <p className="muted">Combination scores were not recorded for this older run. Start a fresh incident to inspect them.</p>}
+                    </section>
                     {/* Backtest replay outcome if available */}
                     {(() => {
                       const res = backtests[selectedPlan.id] ?? selectedPlan.backtest;

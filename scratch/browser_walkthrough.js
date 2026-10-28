@@ -7,7 +7,7 @@ const path = require('path');
 const children = [];
 if (process.env.CONSOLE_START === '1') {
   const root = path.resolve(__dirname, '..');
-  children.push(spawn(path.join(root,'.venv/bin/python'), ['-m','backend.api'], {cwd:root, env:{...process.env,CASCADE_DATA_DIR:'/tmp/cascade-walkthrough-data',CASCADE_APPROVAL_TOKEN:'local-console-test',GEMINI_API_KEY:''}, stdio:'ignore'}));
+  children.push(spawn(path.join(root,'.venv/bin/python'), ['-m','backend.api'], {cwd:root, env:{...process.env,CASCADE_LIVE_TICK_SECONDS:'0.15',CASCADE_DATA_DIR:'/tmp/cascade-walkthrough-data',CASCADE_APPROVAL_TOKEN:'local-console-test',GEMINI_API_KEY:''}, stdio:'ignore'}));
   children.push(spawn(process.execPath, ['node_modules/next/dist/bin/next','start','--hostname','127.0.0.1'], {cwd:path.join(root,'frontend/app'), env:{...process.env,CASCADE_APPROVAL_TOKEN:'local-console-test',CASCADE_OPERATOR_PASSWORD:'local-console-pass'}, stdio:'ignore'}));
 }
 const cleanup = () => children.forEach(child=>child.kill());

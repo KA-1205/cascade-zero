@@ -38,6 +38,7 @@ export interface RunMetrics {
 }
 
 export interface Run {
+  tick_interval_ms?: number;
   id: string;
   seed: number;
   scenario: RunScenario;
@@ -71,6 +72,7 @@ export interface Run {
 }
 
 export interface RunRequest {
+  live?: boolean;
   seed: number;
   scenario: RunScenario;
   policy: RunPolicy;
@@ -88,6 +90,7 @@ export interface PlanExecution {
 }
 
 export interface Plan {
+  combinations?: { actions: string[]; predicted_risk: number; safe: boolean; selected: boolean; reasons: string[] }[];
   id: string;
   run_id: string;
   actions: string[];

@@ -19,10 +19,10 @@ test('operator can stream, replay, compare, approve once, and inspect a signed r
   await page.getByLabel('Simulation seed').fill('137');
   await page.getByLabel('Policy', {exact:true}).selectOption('coordinated');
   await page.getByRole('button', {name:'Generate incident',exact:true}).click();
-  await expect(page.locator('.heading-actions .status-pill')).toHaveText('completed');
+  await expect(page.locator('.heading-actions .status-pill')).toHaveText('completed', {timeout:30000});
   await expect(page.locator('.stream-status')).toContainText('SSE');
   await page.getByRole('button',{name:'Pause live stream'}).click();
-  await expect(page.locator('.stream-status')).toHaveText('Stream paused');
+  await expect(page.locator('.stream-status')).toContainText('Stream paused');
   await page.getByRole('button',{name:'Resume live stream'}).click();
   const plansLink = page.getByRole('link',{name:'Review plans →',exact:true});
   const href = (await plansLink.getAttribute('href'))!;
@@ -78,4 +78,19 @@ test('all desktop views contain their page and main scrollers', async ({ page, r
       for (const item of overflow) { expect(item.x).toBeLessThanOrEqual(1); expect(item.y).toBeLessThanOrEqual(1); }
     }
   }
+});
+
+
+test('payments streams ticks and exposes scored combinations during the run', async ({page}) => {
+  test.setTimeout(45000);
+  await page.goto('/incidents');
+  await page.getByLabel('Policy',{exact:true}).selectOption('coordinated');
+  await page.getByRole('button',{name:'💳 Payments',exact:true}).click();
+  await expect(page.locator('.heading-actions .status-pill')).toHaveText('running');
+  const first = await page.locator('.stream-status').innerText();
+  await expect.poll(()=>page.locator('.stream-status').innerText(),{timeout:10000}).not.toBe(first);
+  await page.getByRole('link',{name:'Review plans →',exact:true}).click();
+  await expect(page.getByRole('table',{name:'Evaluated action combinations'})).toBeVisible({timeout:20000});
+  await expect(page.locator('.heading-actions .status-pill')).toHaveText('running');
+  await expect(page.getByRole('table',{name:'Evaluated action combinations'}).locator('tbody tr')).not.toHaveCount(1);
 });
