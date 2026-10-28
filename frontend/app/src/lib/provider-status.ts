@@ -14,6 +14,12 @@ export function providerFailureHelp(reason: string): string {
     malformed_body: 'The provider returned no usable model answer.',
     unparseable_json: 'The model answer could not be parsed as JSON.',
     response_truncated: 'The model response reached its output limit before completing.',
+    response_too_large: 'The provider response exceeded the bounded response size.',
+    non_finite_model_value: 'Runtime policy rejected a non-finite model value.',
+    probe_outside_policy: 'Runtime policy rejected a probe for an unauthorized action.',
+    unknown_diagnostic_service: 'Runtime policy rejected a diagnosis naming an unknown service.',
+    probe_budget_exhausted: 'The model requested more probe rounds than the runtime policy permits.',
+    stale_telemetry: 'The planner is holding until fresh telemetry is available.',
     response_blocked: 'The provider blocked this model response.',
   };
   return help[reason] ?? 'Use Project Admin → Test AI connection to inspect the current provider status.';
